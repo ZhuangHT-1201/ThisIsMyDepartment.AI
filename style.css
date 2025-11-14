@@ -1,0 +1,150 @@
+@font-face { font-family: 'LcdSolid'; src: url('assets/fonts/LcdSolid.ttf'); }
+html, body {
+    padding: 0;
+    margin: 0;
+    font-family: 'LcdSolid', Helvetica, sans-serif;
+}
+
+* {
+    font-family: 'LcdSolid', Helvetica, sans-serif;;
+}
+
+#background {
+    background-color: #202020;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+}
+
+#gameCanvas {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    margin: auto;
+    display: block;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: -webkit-crisp-edges;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+}
+
+#gameCanvas:focus {
+    outline: 0;
+}
+#videos {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    padding: 20px;
+    max-height: calc(100% - 40px);
+    z-index: 1000;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+}
+/* Hide scrollbar for Chrome, Safari and Opera */
+#videos::-webkit-scrollbar {
+    display: none;
+}
+      
+.userVideo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    color: white;
+}
+.userVideo[hidden] {
+    display: none;
+}
+#options {
+    position: absolute;
+    right: 0;
+    height: 25px;
+    z-index: 1000;
+    width: 200px;
+    overflow: hidden;
+    cursor: pointer;
+}
+#options-container {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    right: 0;
+    top: 25px;
+    z-index: 3001;
+    width: 200px;
+    overflow: hidden;
+}
+#options-container > * {
+    width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: center;
+}
+.bigVideo {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    margin: auto;
+    max-height: 100%;
+    max-width: 100%;
+    cursor: zoom-out;
+}
+.contextMenu {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    background: rgba(255, 255, 255, 0.8);
+    border-bottom-left-radius: 2px;
+    border-bottom-right-radius: 2px;
+    border-top-right-radius: 2px;
+    cursor: pointer;
+}
+.contextMenu > span {
+    padding: 4px 6px;
+}
+.backdrop {
+    position: absolute;
+    z-index: 3000;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    background: rgba(200, 200, 200, 0.3);
+}
+button {
+    cursor: pointer;
+}
+.in-frame {
+    width: 100%;
+    height: 100%;
+}
+#close-in-frame-btn {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    display: none;
+    z-index: 4001;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    border-radius: 20px;
+    width: 24px;
+    height: 24px;
+}
