@@ -92,6 +92,23 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    
+    @app.post("/chat", response_model=ChatResponse)
+    async def chat(request: ChatRequest) -> ChatResponse:
+        try:
+            reply = agent.run(request.message, reset=False)
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+        history = request.history or []
+        history = history + [
+            {"role": "user", "content": request.message},
+            {"role": "assistant", "content": reply},
+        ]
+        return ChatResponse(reply=reply, history=history)
+
+    return app
+
 
     # @app.post("/chat", response_model=ChatResponse)
     # async def chat(request: ChatRequest) -> ChatResponse:
@@ -107,25 +124,6 @@ def create_app() -> FastAPI:
     #         {"role": "assistant", "content": reply},
     #     ]
     #     return ChatResponse(reply=reply, history=history)
-    
-    @app.post("/chat", response_model=ChatResponse)
-    async def chat(request: ChatRequest) -> ChatResponse:
-        session_key = f"{request.agentId}:{request.playerId}"
-        try:
-            # reply = await agent.handle_message(session_key, request.message)
-            reply = agent.run(request.message, reset=False)
-        except Exception as exc:  # pragma: no cover - placeholder error handling
-            raise HTTPException(status_code=500, detail=str(exc)) from exc
-
-        history = request.history or []
-        history = history + [
-            {"role": "user", "content": request.message},
-            {"role": "assistant", "content": reply},
-        ]
-        return ChatResponse(reply=reply, history=history)
-
-    return app
-
 
 app = create_app()
 
