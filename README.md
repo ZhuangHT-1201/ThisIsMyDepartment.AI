@@ -3,7 +3,7 @@
 This is an AI Town for interacting with the LLM agents developed by faculty members and students in the Department of Industrial Engineering at Tsinghua University.
 It is developed based on the gather town implementation of [eweren](https://github.com/eweren/gather.town?tab=readme-ov-file), e.g. by adding support for LLM controlled characters.
 
-![界面](https://github.com/cyrilli/THUShundeBuilding.AI/blob/main/resource/ShundeBuilding_demo.png)
+![界面](https://github.com/cyrilli/THUShundeBuilding.AI/blob/main/resource/ShundeBuilding_demo_v2.png)
 
 ## Development
 
