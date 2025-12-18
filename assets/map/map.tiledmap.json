@@ -635,7 +635,7 @@
                         {
                          "name":"url",
                          "type":"string",
-                         "value":"http:\/\/166.111.59.11:58581\/"
+                         "value":"http:\/\/localhost:5174\/"
                         }],
                  "rotation":0,
                  "type":"iframe",

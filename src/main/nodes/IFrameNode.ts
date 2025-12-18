@@ -13,6 +13,8 @@ export interface IFrameNodeArgs extends SceneNodeArgs {
 }
 
 export class IFrameNode extends InteractiveNode {
+    // Flip to true if the design ever requires runtime URL pasting again
+    private static readonly ALLOW_URL_PASTE = false;
     @asset("sprites/empty.aseprite.json")
     private static readonly noSprite: Aseprite;
     @asset(STANDARD_FONT)
@@ -29,6 +31,8 @@ export class IFrameNode extends InteractiveNode {
     private videos?: HTMLElement;
     private iFrame?: HTMLIFrameElement;
     private readonly labelNode?: TextNode<Gather>;
+    private readonly handleCloseButtonClick = () => this.close();
+    private closeButtonListenerAttached = false;
 
     public constructor({ onUpdate, ...args }: IFrameNodeArgs) {
         super({
@@ -67,7 +71,10 @@ export class IFrameNode extends InteractiveNode {
     /** @inheritdoc */
     public deactivate(): void {
         this.pasteInput?.remove();
-        this.closeBtn?.removeEventListener("click", this.close.bind(this));
+        if (this.closeBtn && this.closeButtonListenerAttached) {
+            this.closeBtn.removeEventListener("click", this.handleCloseButtonClick);
+            this.closeButtonListenerAttached = false;
+        }
         super.deactivate();
     }
 
@@ -99,8 +106,10 @@ export class IFrameNode extends InteractiveNode {
         this.iFrame = document.createElement("iframe");
         this.iFrame.src = this.url;
         this.iFrame.frameBorder = "0";
-        this.iFrame.scrolling = "no";
         this.iFrame.allowFullscreen = true;
+        this.iFrame.style.overflow = "auto";
+        // Allow embedded pages to show scrollbars and request common capabilities (camera/mic for meetings, clipboard for auth codes, etc.)
+        this.iFrame.setAttribute("allow", "camera; microphone; fullscreen; geolocation; clipboard-read; clipboard-write; autoplay");
         this.iFrame.style.position = "absolute";
         this.iFrame.style.zIndex = "4000";
         this.iFrame.style.left = "0";
@@ -108,7 +117,7 @@ export class IFrameNode extends InteractiveNode {
         this.iFrame.style.bottom = "0";
         this.iFrame.style.right = "0";
         this.iFrame.classList.add("in-frame");
-        if (this.needpasting) {
+        if (IFrameNode.ALLOW_URL_PASTE && this.needpasting) {
             this.pasteInput = document.createElement("input");
             this.pasteInput.addEventListener("keydown", (ev) => {
                 if (ev.key === "Enter") {
@@ -133,7 +142,10 @@ export class IFrameNode extends InteractiveNode {
         }
         if (this.closeBtn) {
             this.closeBtn.style.display = "flex";
-            this.closeBtn.addEventListener("click", this.close.bind(this));
+            if (!this.closeButtonListenerAttached) {
+                this.closeBtn.addEventListener("click", this.handleCloseButtonClick);
+                this.closeButtonListenerAttached = true;
+            }
         }
         this.videos = document.getElementById("videos") ?? undefined;
         if (this.videos) {
@@ -160,11 +172,20 @@ export class IFrameNode extends InteractiveNode {
         this.backdrop?.remove();
         this.iFrame?.remove();
         this.pasteInput?.remove();
-        this.inIFrame = !this.inIFrame;
+        const wasOpen = this.inIFrame;
+        this.inIFrame = false;
+        if (wasOpen) {
+            this.setTag("off");
+            this.onUpdate?.(false);
+        }
         this.getGame().pauseGame();
 
         if (this.closeBtn) {
             this.closeBtn.style.display = "none";
+            if (this.closeButtonListenerAttached) {
+                this.closeBtn.removeEventListener("click", this.handleCloseButtonClick);
+                this.closeButtonListenerAttached = false;
+            }
         }
 
         if (this.videos) {
