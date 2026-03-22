@@ -1,8 +1,8 @@
 import { Rect } from "../../engine/geom/Rect";
 import { SceneNode } from "../../engine/scene/SceneNode";
-import { Gather } from "../Gather";
+import { ThisIsMyDepartmentApp } from "../ThisIsMyDepartmentApp";
 
-export class CameraLimitNode extends SceneNode<Gather> {
+export class CameraLimitNode extends SceneNode<ThisIsMyDepartmentApp> {
     public update(): void {
         const scene = this.getScene();
         if (scene != null) {

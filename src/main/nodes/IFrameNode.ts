@@ -6,7 +6,7 @@ import { asset } from "../../engine/assets/Assets";
 import { TextNode } from "../../engine/scene/TextNode";
 import { BitmapFont } from "../../engine/assets/BitmapFont";
 import { Layer, STANDARD_FONT } from "../constants";
-import { Gather } from "../Gather";
+import { ThisIsMyDepartmentApp } from "../ThisIsMyDepartmentApp";
 
 export interface IFrameNodeArgs extends SceneNodeArgs {
     onUpdate?: (state: boolean) => boolean | undefined;
@@ -30,7 +30,7 @@ export class IFrameNode extends InteractiveNode {
     private closeBtn?: HTMLDivElement;
     private videos?: HTMLElement;
     private iFrame?: HTMLIFrameElement;
-    private readonly labelNode?: TextNode<Gather>;
+    private readonly labelNode?: TextNode<ThisIsMyDepartmentApp>;
     private readonly handleCloseButtonClick = () => this.close();
     private closeButtonListenerAttached = false;
 
@@ -50,7 +50,7 @@ export class IFrameNode extends InteractiveNode {
             ?? args.tiledObject?.getName()
             ?? "";
         if (labelText.trim().length > 0) {
-            this.labelNode = new TextNode<Gather>({
+            this.labelNode = new TextNode<ThisIsMyDepartmentApp>({
                 font: IFrameNode.labelFont,
                 color: "white",
                 outlineColor: "black",
@@ -129,6 +129,7 @@ export class IFrameNode extends InteractiveNode {
                 const copied = this.pasteInput?.value;
                 if (copied != null && copied !== "") {
                     this.getGame().sendCommand("IFrameUpdate", { originalUrl: this.url, newUrl: copied });
+                    this.getGame().recordIFrameUrlChanged(this.url, copied);
                     this.url = copied;
                 }
                 this.pasteInput?.remove();
@@ -160,6 +161,7 @@ export class IFrameNode extends InteractiveNode {
         });
         document.body.append(this.backdrop);
         document.body.append(this.iFrame);
+        this.getGame().recordIFrameOpened(this.url);
         this.getGame().pauseGame();
         setTimeout(() => {
             this.iFrame?.focus();
@@ -177,6 +179,7 @@ export class IFrameNode extends InteractiveNode {
         if (wasOpen) {
             this.setTag("off");
             this.onUpdate?.(false);
+            this.getGame().recordIFrameClosed(this.url);
         }
         this.getGame().pauseGame();
 

@@ -5,7 +5,7 @@ import { getAudioContext, Sound } from "../../engine/assets/Sound";
 import { Direction } from "../../engine/geom/Direction";
 import { SoundNode, } from "../../engine/scene/SoundNode";
 import { TiledSceneArgs } from "../../engine/scene/TiledMapNode";
-import { Gather } from "../Gather";
+import { ThisIsMyDepartmentApp } from "../ThisIsMyDepartmentApp";
 import { InteractiveNode } from "./InteractiveNode";
 
 export class SpeakerNode extends InteractiveNode {
@@ -13,7 +13,7 @@ export class SpeakerNode extends InteractiveNode {
     private static readonly noSprite: Aseprite;
 
     private sound?: Sound;
-    private soundNode?: SoundNode<Gather>;
+    private soundNode?: SoundNode<ThisIsMyDepartmentApp>;
     private range: number;
     private intensity: number;
     private soundbox: number;

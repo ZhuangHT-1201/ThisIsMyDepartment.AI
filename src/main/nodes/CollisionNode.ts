@@ -2,9 +2,9 @@ import { Direction } from "../../engine/geom/Direction";
 import { Bounds2 } from "../../engine/graphics/Bounds2";
 import { Vector2 } from "../../engine/graphics/Vector2";
 import { SceneNode, SceneNodeArgs } from "../../engine/scene/SceneNode";
-import { Gather } from "../Gather";
+import { ThisIsMyDepartmentApp } from "../ThisIsMyDepartmentApp";
 
-export class CollisionNode extends SceneNode<Gather> {
+export class CollisionNode extends SceneNode<ThisIsMyDepartmentApp> {
     public constructor(args?: SceneNodeArgs) {
         super({ anchor: Direction.TOP_LEFT, ...args });
         // this.setShowBounds(true);

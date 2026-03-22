@@ -6,11 +6,11 @@ import { AsepriteNode, AsepriteNodeArgs } from "../../engine/scene/AsepriteNode"
 import { TextNode } from "../../engine/scene/TextNode";
 import { clamp } from "../../engine/util/math";
 import { Layer, STANDARD_FONT } from "../constants";
-import { Gather } from "../Gather";
+import { ThisIsMyDepartmentApp } from "../ThisIsMyDepartmentApp";
 import { CharacterNode } from "./CharacterNode";
 import { PlayerNode } from "./PlayerNode";
 
-export abstract class InteractiveNode extends AsepriteNode<Gather> {
+export abstract class InteractiveNode extends AsepriteNode<ThisIsMyDepartmentApp> {
     @asset(STANDARD_FONT)
     private static readonly font: BitmapFont;
 

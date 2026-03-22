@@ -1,7 +1,7 @@
 import { ReadonlyVector2Like } from "../../engine/graphics/Vector2";
 import { SceneNode, SceneNodeArgs } from "../../engine/scene/SceneNode";
 import { GRAVITY } from "../constants";
-import { Gather } from "../Gather";
+import { ThisIsMyDepartmentApp } from "../ThisIsMyDepartmentApp";
 
 type ParticleAppearance = string | HTMLImageElement | HTMLCanvasElement;
 
@@ -29,7 +29,7 @@ export interface ParticleNodeArgs extends SceneNodeArgs {
     update?: (p: Particle) => void;
 }
 
-export class ParticleNode extends SceneNode<Gather> {
+export class ParticleNode extends SceneNode<ThisIsMyDepartmentApp> {
     private particles: Particle[];
     private offsetGenerator: VectorGenerator;
     private velocityGenerator: VectorGenerator;

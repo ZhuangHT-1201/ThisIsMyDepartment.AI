@@ -2,7 +2,9 @@ import { UserVideoElement } from "./customElements/UserVideoElement";
 import { isDev } from "./engine/util/env";
 import { sleep } from "./engine/util/time";
 import { AudioMixerEffect as MusicSource } from "./JitsiMixer";
-import { Gather } from "./main/Gather";
+import { ThisIsMyDepartmentApp } from "./main/ThisIsMyDepartmentApp";
+import { DEFAULT_DEV_ROOM_NAME, DEFAULT_SHARED_ROOM_NAME, getStoredMediaDevicePreference, setStoredMediaDevicePreference } from "./main/constants";
+import { getJitsiConnectionOptions } from "./main/runtimeConfig";
 import { CharacterNode } from "./main/nodes/CharacterNode";
 import { IFrameNode } from "./main/nodes/IFrameNode";
 import JitsiConference from "./typings/Jitsi/JitsiConference";
@@ -26,16 +28,12 @@ export default class JitsiInstance {
 
     public localTracks: Array<JitsiLocalTrack> = [];
     public remoteTracks: Record<string, Array<JitsiRemoteTrack>> = {};
-
-
+    private audioEnabled = false;
+    private videoEnabled = false;
+    private localTrackCreationPromise?: Promise<void>;
 
     private connectionOptions: JitsiConferenceOptions = {
-        hosts: {
-            domain: "meet.ewer.rest",
-            muc: "conference.meet.ewer.rest"
-        },
-        serviceUrl: "https://meet.ewer.rest/http-bind",
-        clientNode: "http://meet.ewer.rest/jitsimeet",
+        ...getJitsiConnectionOptions()
     };
 
     private confOptions: JitsiConferenceInitOptions = {
@@ -75,15 +73,7 @@ export default class JitsiInstance {
 
             this.connection?.connect(undefined);
 
-            const micDeviceId = localStorage.getItem("gatherDefaultAudioSrc") ?? undefined;
-            const cameraDeviceId = localStorage.getItem("gatherDefaultVideoSrc") ?? undefined;
-            const audioOutputDevice = localStorage.getItem("gatherDefaultAudioOutput") ?? undefined;
-
-            this.JitsiMeetJS.createLocalTracks({ devices: ["audio", "video"], cameraDeviceId, micDeviceId })
-                .then(this.onLocalTracks.bind(this))
-                .catch(error => {
-                    throw error;
-                });
+            const audioOutputDevice = getStoredMediaDevicePreference(localStorage, "audioOutput");
 
             if (audioOutputDevice != null) {
                 this.changeAudioOutput(audioOutputDevice);
@@ -127,6 +117,7 @@ export default class JitsiInstance {
                 }
             }
         }
+        this.applyLocalMediaPreferences();
     }
 
     private createLocalAudio(): HTMLAudioElement {
@@ -134,13 +125,17 @@ export default class JitsiInstance {
         audioEl.muted = true;
         audioEl.autoplay = true;
         audioEl.id = "localAudio";
-        document.getElementById("body")?.append(audioEl);
+        document.body.append(audioEl);
         return audioEl;
     }
 
     private async createLocalVideoElement(): Promise<UserVideoElement> {
-        await sleep(1000);
-        const videoElement = new UserVideoElement("You", this.room);
+        const existing = document.getElementById("localUserVideo") as UserVideoElement | null;
+        if (existing) {
+            return existing;
+        }
+        await sleep(50);
+        const videoElement = new UserVideoElement("You", this.room, undefined, true);
         document.getElementById("videos")?.append(videoElement);
         return videoElement;
     }
@@ -270,6 +265,7 @@ export default class JitsiInstance {
         for (let i = 0; i < this.localTracks.length; i++) {
             this.room.addTrack(this.localTracks[i]);
         }
+        this.applyLocalMediaPreferences();
     }
 
     /**
@@ -280,7 +276,7 @@ export default class JitsiInstance {
         if (!this.remoteTracks[id]) {
             return;
         }
-        Gather.instance.removePlayer(id);
+        ThisIsMyDepartmentApp.instance.removePlayer(id);
         const tracks = this.remoteTracks[id];
 
         for (let i = 0; i < tracks.length; i++) {
@@ -305,7 +301,7 @@ export default class JitsiInstance {
         if (this.connection == null) {
             return;
         }
-        this.room = this.connection.initJitsiConference(isDev() ? "mylittleconference" : "gather", this.confOptions);
+        this.room = this.connection.initJitsiConference(isDev() ? DEFAULT_DEV_ROOM_NAME : DEFAULT_SHARED_ROOM_NAME, this.confOptions);
         this.room.setReceiverConstraints({
             defaultConstraints: { maxHeight: 1080 }
         });
@@ -316,8 +312,8 @@ export default class JitsiInstance {
         this.room.on(JitsiConferenceEvents.USER_JOINED, async id => {
             this.remoteTracks[id] = [];
             await sleep(500);
-            if (Gather.instance.isInGameScene() && id !== this.room.getName()) {
-                Gather.instance.showNotification(this.room.getParticipantById(id).getDisplayName() + " joined");
+            if (ThisIsMyDepartmentApp.instance.isInGameScene() && id !== this.room.getName()) {
+                ThisIsMyDepartmentApp.instance.showNotification(this.room.getParticipantById(id).getDisplayName() + " joined");
             }
         });
         this.room.on(JitsiConferenceEvents.MESSAGE_RECEIVED, this.handleMessageReceived.bind(this));
@@ -345,28 +341,28 @@ export default class JitsiInstance {
         this.room.addCommandListener("presentationUpdate", (values: any) => {
             const parsedObj = JSON.parse(values.value);
             if (parsedObj.id !== this.room.myUserId()) {
-                Gather.instance.handleOtherPlayerPresentationUpdate(parsedObj);
+                ThisIsMyDepartmentApp.instance.handleOtherPlayerPresentationUpdate(parsedObj);
             }
         });
         this.room.addCommandListener("speakerUpdate", (values: any) => {
             const parsedObj = JSON.parse(values.value);
             if (parsedObj.id !== this.room.myUserId()) {
                 const id = this.room.getParticipantById(parsedObj.id).getDisplayName();
-                const character = Gather.instance.getGameScene().rootNode.getDescendantById(id) as CharacterNode;
+                const character = ThisIsMyDepartmentApp.instance.getGameScene().rootNode.getDescendantById(id) as CharacterNode;
                 character?.activateSpeakerNode({userId: parsedObj.id, nodeId: parsedObj.speakerNode, id: parsedObj.shareAudioId});
                 if (parsedObj.id != null) {
-                    Gather.instance.showNotification(id + " started to share music");
+                    ThisIsMyDepartmentApp.instance.showNotification(id + " started to share music");
                 } else {
-                    Gather.instance.showNotification(id + " stopped to share music");
+                    ThisIsMyDepartmentApp.instance.showNotification(id + " stopped to share music");
                 }
             }
         });
         this.room.addCommandListener("IFrameUpdate", (values: any) => {
             const parsedObj = JSON.parse(values.value);
             if (parsedObj.id !== this.room.myUserId()) {
-                const iFrameToUpdate = Gather.instance.getGameScene().rootNode.getDescendantsByType<IFrameNode>(IFrameNode)
+                const iFrameToUpdate = ThisIsMyDepartmentApp.instance.getGameScene().rootNode.getDescendantsByType<IFrameNode>(IFrameNode)
                     .filter(iFrame => iFrame.url === parsedObj.originalUrl);
-                Gather.instance.showNotification(this.room.getParticipantById(parsedObj.id).getDisplayName() + " started a game");
+                ThisIsMyDepartmentApp.instance.showNotification(this.room.getParticipantById(parsedObj.id).getDisplayName() + " started a game");
                 iFrameToUpdate.forEach(iFrame => {
                     iFrame.url = parsedObj.newUrl;
                     iFrame.pasteInput?.remove();
@@ -389,16 +385,16 @@ export default class JitsiInstance {
     private handleMessageReceived(participantId: string, text: string, ts: number): void {
         const isSelf = participantId === this.room.myUserId();
         const displayName = isSelf
-            ? Gather.instance.userName
+            ? ThisIsMyDepartmentApp.instance.userName
             : this.room.getParticipantById(participantId)?.getDisplayName() ?? "anonymous";
 
-        Gather.instance.handleParticipantChat(participantId, displayName, text, isSelf);
+        ThisIsMyDepartmentApp.instance.handleParticipantChat(participantId, displayName, text, isSelf);
 
-        if (isSelf && Gather.instance.isInGameScene()) {
-            Gather.instance.getPlayer()?.say(text, 5);
+        if (isSelf && ThisIsMyDepartmentApp.instance.isInGameScene()) {
+            ThisIsMyDepartmentApp.instance.getPlayer()?.say(text, 5);
             return;
         }
-        const player = Gather.instance.getOtherPlayerById(participantId);
+        const player = ThisIsMyDepartmentApp.instance.getOtherPlayerById(participantId);
         player?.say(text, 5);
     }
 
@@ -416,33 +412,19 @@ export default class JitsiInstance {
     }
 
     public pauseVideoTrackForUser(userID: string): void {
-        const nameOfParticipant = this.room.getParticipantById(userID)?.getDisplayName() ?? "anonymous";
-        const vidEl = document.getElementById(`${userID}video`) as HTMLVideoElement;
-        if (vidEl == null) {
+        const videoElement = document.getElementById(`${userID}video`) as UserVideoElement | null;
+        if (videoElement == null) {
             return;
         }
-        const name = document.createElement("span");
-        name.classList.add("userName");
-        name.innerText = nameOfParticipant;
-        const wrapper = document.createElement("div");
-        wrapper.classList.add("userVideo");
-        wrapper.appendChild(name);
-        const imEl = document.createElement("img");
-        imEl.src = "https://www.dovercourt.org/wp-content/uploads/2019/11/610-6104451_image-placeholder-png-user-profile-placeholder-image-png.jpg";
-        wrapper.id = `${userID}placeholder`;
-        imEl.style.borderRadius = "500px";
-        imEl.style.width = "150px";
-        imEl.style.height = "150px";
-        imEl.style.objectFit = "cover";
-        wrapper.appendChild(imEl);
-        wrapper.appendChild(name);
-        vidEl?.replaceWith(wrapper);
-        vidEl.srcObject = null;
+        videoElement.setVideoEnabled(false);
     }
 
     public resumeVideoTrackForUser(track: JitsiRemoteTrack | JitsiLocalTrack): void {
-        const newWrapper = this.createVideoTrackForUser(track);
-        document.getElementById(`${track.getParticipantId()}placeholder`)?.replaceWith(newWrapper);
+        const videoElement = document.getElementById(`${track.getParticipantId()}video`) as UserVideoElement | null;
+        if (videoElement != null) {
+            videoElement.setTrack(track);
+            videoElement.setVideoEnabled(true);
+        }
     }
 
     /**
@@ -478,7 +460,9 @@ export default class JitsiInstance {
         for (let i = 0; i < this.localTracks.length; i++) {
             this.localTracks[i].dispose();
         }
-        await this.room.leave();
+        if (this.room) {
+            await this.room.leave();
+        }
         this.connection?.disconnect();
     }
 
@@ -524,19 +508,37 @@ export default class JitsiInstance {
     }
 
     public switchVideo(): void {
+        if (!this.room) {
+            ThisIsMyDepartmentApp.instance.showNotification("Video controls are not ready yet.");
+            return;
+        }
+
+        if (!this.JitsiMeetJS.isDesktopSharingEnabled()) {
+            ThisIsMyDepartmentApp.instance.showNotification("Screen sharing is not supported in this browser or context.");
+            return;
+        }
+
         // TODO if presentation try to redirect pc audio
         const previousTrack = this.room.getLocalVideoTrack();
         if (previousTrack != null) {
             this.localTracks.splice(this.localTracks.indexOf(previousTrack), 1);
         }
-        const isVideo = !!this.room.getLocalVideoTrack()?.isScreenSharing();
+        const isScreenShareActive = !!this.room.getLocalVideoTrack()?.isScreenSharing();
+        ThisIsMyDepartmentApp.instance.showNotification(isScreenShareActive ? "Switching back to camera..." : "Starting screen share...");
+
         this.JitsiMeetJS.createLocalTracks({
-            devices: [isVideo ? "video" : "desktop"]
+            devices: [isScreenShareActive ? "video" : "desktop"]
         }).then(tracks => {
             if (tracks instanceof Array) {
                 const element = document.getElementById("localUserVideo") as UserVideoElement;
+                const nextVideoTrack = tracks.find(track => track.getType() === "video");
+                if (!nextVideoTrack) {
+                    ThisIsMyDepartmentApp.instance.showNotification("No video track was created for screen sharing.");
+                    return;
+                }
+
                 this.localTracks.push(...tracks);
-                this.localTracks[1].addEventListener(
+                nextVideoTrack.addEventListener(
                     JitsiTrackEvents.LOCAL_TRACK_STOPPED, () => {
                         const trackToDispose = this.room.getLocalVideoTrack();
                         if (trackToDispose != null) {
@@ -554,43 +556,152 @@ export default class JitsiInstance {
                                 this.room.addTrack(previousTrack);
                             }
                         }
+                        ThisIsMyDepartmentApp.instance.showNotification("Screen sharing stopped.");
                     });
                 if (element != null) {
-                    element.setTrack(this.localTracks[1]);
+                    element.setTrack(nextVideoTrack);
                 }
 
                 if (previousTrack) {
-                    this.room.replaceTrack(previousTrack, this.localTracks[1]);
+                    this.room.replaceTrack(previousTrack, nextVideoTrack);
                 } else {
-                    this.room.addTrack(this.localTracks[1]);
+                    this.room.addTrack(nextVideoTrack);
                 }
+
+                ThisIsMyDepartmentApp.instance.showNotification(isScreenShareActive ? "Camera restored." : "Screen sharing started.");
             }
         })
-            .catch(error => console.log(error));
+            .catch(error => {
+                console.log(error);
+                const message = error instanceof Error && error.message
+                    ? error.message
+                    : String(error ?? "Unknown error");
+                ThisIsMyDepartmentApp.instance.showNotification(`Screen share failed: ${message}`);
+            });
     }
 
     public changeAudioOutput(deviceId: string): void {
-        localStorage.setItem("gatherDefaultAudioOutput", deviceId);
+        setStoredMediaDevicePreference(localStorage, "audioOutput", deviceId);
         this.JitsiMeetJS.mediaDevices.setAudioOutputDevice(deviceId);
     }
 
+    public isLocalAudioEnabled(): boolean {
+        return this.audioEnabled;
+    }
+
+    public isLocalVideoEnabled(): boolean {
+        return this.videoEnabled;
+    }
+
+    public setLocalAudioEnabled(enabled: boolean): void {
+        this.audioEnabled = enabled;
+    }
+
+    public setLocalVideoEnabled(enabled: boolean): void {
+        this.videoEnabled = enabled;
+    }
+
+    public toggleLocalAudio(): boolean {
+        this.setLocalAudioEnabled(!this.audioEnabled);
+        return this.audioEnabled;
+    }
+
+    public toggleLocalVideo(): boolean {
+        this.setLocalVideoEnabled(!this.videoEnabled);
+        return this.videoEnabled;
+    }
+
+    public async syncConversationMedia(active: boolean): Promise<void> {
+        if (!active || (!this.audioEnabled && !this.videoEnabled)) {
+            this.releaseLocalTracks();
+            return;
+        }
+
+        await this.ensureLocalTracks();
+        this.applyLocalMediaPreferences();
+    }
+
     public changeAudioInput(deviceId: string): void {
-        localStorage.setItem("gatherDefaultAudioSrc", deviceId);
-        const cameraDeviceId = localStorage.getItem("gatherDefaultVideoSrc") ?? undefined;
-        this.JitsiMeetJS.createLocalTracks({ devices: ["audio", "video"], micDeviceId: deviceId, cameraDeviceId })
-            .then(this.onLocalTracks.bind(this))
-            .catch(error => {
-                throw error;
-            });
+        setStoredMediaDevicePreference(localStorage, "audioInput", deviceId);
+        if (this.localTracks.length > 0) {
+            this.releaseLocalTracks();
+            void this.ensureLocalTracks();
+        }
     }
 
     public changeVideoInput(deviceId: string): void {
-        localStorage.setItem("gatherDefaultVideoSrc", deviceId);
-        const micDeviceId = localStorage.getItem("gatherDefaultAudioSrc") ?? undefined;
-        this.JitsiMeetJS.createLocalTracks({ devices: ["audio", "video"], cameraDeviceId: deviceId, micDeviceId })
-            .then(this.onLocalTracks.bind(this))
-            .catch(error => {
-                throw error;
+        setStoredMediaDevicePreference(localStorage, "videoInput", deviceId);
+        if (this.localTracks.length > 0) {
+            this.releaseLocalTracks();
+            void this.ensureLocalTracks();
+        }
+    }
+
+    private async ensureLocalTracks(): Promise<void> {
+        if (this.localTracks.length > 0) {
+            return;
+        }
+        if (this.localTrackCreationPromise) {
+            return this.localTrackCreationPromise;
+        }
+
+        const micDeviceId = getStoredMediaDevicePreference(localStorage, "audioInput");
+        const cameraDeviceId = getStoredMediaDevicePreference(localStorage, "videoInput");
+
+        this.localTrackCreationPromise = this.JitsiMeetJS.createLocalTracks({ devices: ["audio", "video"], cameraDeviceId, micDeviceId })
+            .then(async tracks => {
+                await this.onLocalTracks(tracks);
+            })
+            .finally(() => {
+                this.localTrackCreationPromise = undefined;
             });
+
+        return this.localTrackCreationPromise;
+    }
+
+    private releaseLocalTracks(): void {
+        const tracks = [...this.localTracks];
+        this.localTracks = [];
+
+        tracks.forEach(track => {
+            try {
+                if (this.isJoined) {
+                    this.room.removeTrack(track);
+                }
+            } catch (_) {
+                // Ignore remove failures for already-detached tracks.
+            }
+            try {
+                track.dispose();
+            } catch (_) {
+                // Ignore dispose failures from half-initialized tracks.
+            }
+        });
+
+        document.getElementById("localAudio")?.remove();
+        document.getElementById("localUserVideo")?.remove();
+    }
+
+    private applyLocalMediaPreferences(): void {
+        const localVideoElement = document.getElementById("localUserVideo") as UserVideoElement | null;
+
+        this.localTracks.forEach(track => {
+            if (track.getType() === "audio") {
+                if (this.audioEnabled) {
+                    track.unmute();
+                } else {
+                    track.mute();
+                }
+                return;
+            }
+
+            if (this.videoEnabled) {
+                track.unmute();
+            } else {
+                track.mute();
+            }
+        });
+
+        localVideoElement?.setVideoEnabled(this.videoEnabled);
     }
 }

@@ -1,5 +1,7 @@
 import * as io from "socket.io-client";
-import { Gather } from "../../main/Gather";
+import { ThisIsMyDepartmentApp } from "../../main/ThisIsMyDepartmentApp";
+import { DEFAULT_DEV_ROOM_NAME, DEFAULT_SHARED_ROOM_NAME } from "../../main/constants";
+import { getRealtimeSocketBaseUrl } from "../../main/runtimeConfig";
 import { isDev } from "../util/env";
 
 import { Service } from "../util/service";
@@ -8,8 +10,11 @@ import { Signal } from "../util/Signal";
 export interface RoomInfoEvent {
     host: string,
     users: Array<string>,
+    userIds?: Array<string>,
     playerJoined?: string,
+    playerJoinedUserId?: string,
     playerLeft?: string,
+    playerLeftUserId?: string,
     gameTime?: number
 }
 
@@ -19,18 +24,52 @@ export interface ActionEvent {
     args: any;
 }
 
+export interface OnlineIdentity {
+    userId?: string;
+    displayName?: string;
+}
+
+export interface OnlinePlayerSnapshot {
+    id?: string;
+    userId?: string;
+    username?: string;
+    displayName?: string;
+}
+
+export interface DirectMessageEvent {
+    fromUserId: string;
+    fromDisplayName: string;
+    toUserId: string;
+    text: string;
+    timestamp: number;
+}
+
+export interface PlayerConversationEvent {
+    fromUserId: string;
+    fromDisplayName: string;
+    toUserId: string;
+    action: "open" | "close";
+    timestamp: number;
+}
+
 @Service
 export class OnlineService {
-    private static onlineBaseUrl = isDev() && false ? "http://localhost:3000/" : "https://socket.ewer.rest:3000/";
+    private static onlineBaseUrl = getRealtimeSocketBaseUrl();
 
     public static async getUsers(): Promise<any> {
-        return (await fetch(`${OnlineService.onlineBaseUrl}${isDev() ? "mylittleconference" : "gather"}`)).json();
+        return (await fetch(`${OnlineService.onlineBaseUrl}${isDev() ? DEFAULT_DEV_ROOM_NAME : DEFAULT_SHARED_ROOM_NAME}`)).json();
     }
     /** The username of the current user. */
     public username = "";
 
+    /** Stable app-level user identifier. */
+    public userId = "";
+
     /** The usernames of the other players in this game. */
     public players: Set<string> = new Set();
+
+    /** Stable user identifiers currently present in the room. */
+    public playerIds: Set<string> = new Set();
 
     /** Emits on updates of some character in the game. */
     public onCharacterUpdate = new Signal<any>();
@@ -56,6 +95,12 @@ export class OnlineService {
     /** Emits if a player has lost connection. */
     public onOtherPlayerDisconnect = new Signal<string>();
 
+    /** Emits when another player sends a direct text message to the current user. */
+    public onDirectMessage = new Signal<DirectMessageEvent>();
+
+    /** Emits when another player opens or closes a direct conversation with the current user. */
+    public onPlayerConversationEvent = new Signal<PlayerConversationEvent>();
+
     /** Emits if the gameState changed. Something like the host started the game. */
     public onGameStateUpdate = new Signal<string>();
 
@@ -68,28 +113,42 @@ export class OnlineService {
     /** Holds the last gamestate in order to minimize unneeded payload. */
     private _lastGameState = "";
 
-    public constructor(username: string = "") {
+    /** Tracks whether the realtime socket is currently connected. */
+    private _isConnected = false;
+
+    public constructor(identity: string | OnlineIdentity = "") {
         if (isDev()) {
             (window as any).onlineService = this;
         }
-        this.username = username;
-        let room = Gather.instance?.JitsiInstance?.room.getName() ?? "mylittleconference";
+        if (typeof identity === "string") {
+            this.username = identity;
+            this.userId = identity;
+        } else {
+            this.username = identity.displayName ?? "";
+            this.userId = identity.userId ?? this.username;
+        }
+        let room = ThisIsMyDepartmentApp.instance?.JitsiInstance?.room.getName() ?? (isDev() ? DEFAULT_DEV_ROOM_NAME : DEFAULT_SHARED_ROOM_NAME);
         if (!room) {
             room = (Math.random() * 10000000).toFixed();
         }
 
         // Initialize socket and add current user to the list of users.
-        this.socket = io.connect(OnlineService.onlineBaseUrl, { query: { room, username: this.username }, transportOptions: ["websocket"] });
+        this.socket = io.connect(OnlineService.onlineBaseUrl, {
+            query: { room, username: this.username, userId: this.userId },
+            transports: ["websocket"]
+        });
         this.socket.on("connect", () => {
+            this._isConnected = true;
             this.onPlayerConnect.emit();
             this.players.add(this.username!);
+            this.playerIds.add(this.userId || this.username);
         });
 
         // Listen on characterUpdate. Those updates are related to every character in the game and thus are very time
         // sensitive.
         this.socket.on("characterUpdate", (val: any) => {
             // We have to differentiate between actions that are related to other users characters or our own.
-            if (val.username !== this.username) {
+            if (!this.isSelfEvent(val)) {
                 this.onCharacterUpdate.emit(val);
             }
         });
@@ -98,8 +157,7 @@ export class OnlineService {
         // sensitive.
         this.socket.on("characterJoined", (val: any) => {
             // We have to differentiate between actions that are related to other users characters or our own.
-            if (val.id !== this.username) {
-                console.log(val.id, this.username);
+            if (!this.isSelfEvent(val)) {
                 this.onOtherPlayerJoined.emit(val);
             }
         });
@@ -115,7 +173,7 @@ export class OnlineService {
         // sensitive.
         this.socket.on("characterEvent", (val: ActionEvent) => {
             // We have to differentiate between actions that are related to other users characters or our own.
-            if (val.id !== this.username) {
+            if (!this.isSelfEvent(val)) {
                 this.onCharacterAction.emit(val);
             }
         });
@@ -125,11 +183,12 @@ export class OnlineService {
 
             this._isHost = val.host === this.username;
             this.players = new Set(val.users);
+            this.playerIds = new Set(val.userIds ?? []);
             if (val.playerJoined) {
-                this.onOtherPlayerConnect.emit(val.playerJoined);
+                this.onOtherPlayerConnect.emit(val.playerJoinedUserId ?? val.playerJoined);
             }
-            if (val.playerLeft) {
-                this.onOtherPlayerDisconnect.emit(val.playerLeft);
+            if (val.playerLeft || val.playerLeftUserId) {
+                this.onOtherPlayerDisconnect.emit(val.playerLeftUserId ?? val.playerLeft!);
             }
         });
 
@@ -140,7 +199,49 @@ export class OnlineService {
         });
 
         this.socket.on("disconnect", () => {
+            this._isConnected = false;
             this.onPlayerDisconnect.emit();
+        });
+
+        this.socket.on("directMessage", (val: DirectMessageEvent) => {
+            if (!val || val.toUserId !== this.userId) {
+                return;
+            }
+            this.onDirectMessage.emit(val);
+        });
+
+        this.socket.on("playerConversationEvent", (val: PlayerConversationEvent) => {
+            if (!val || val.toUserId !== this.userId) {
+                return;
+            }
+            this.onPlayerConversationEvent.emit(val);
+        });
+    }
+
+    public isConnected(): boolean {
+        return this._isConnected;
+    }
+
+    public sendDirectMessage(targetUserId: string, text: string): void {
+        const trimmedTarget = targetUserId.trim();
+        const trimmedText = text.trim();
+        if (!trimmedTarget || !trimmedText) {
+            return;
+        }
+        this.socket.emit("directMessage", {
+            targetUserId: trimmedTarget,
+            text: trimmedText
+        });
+    }
+
+    public sendPlayerConversationEvent(targetUserId: string, action: "open" | "close"): void {
+        const trimmedTarget = targetUserId.trim();
+        if (!trimmedTarget) {
+            return;
+        }
+        this.socket.emit("playerConversationEvent", {
+            targetUserId: trimmedTarget,
+            action
         });
     }
 
@@ -187,5 +288,21 @@ export class OnlineService {
         if (event.id != null) {
             this.socket.emit("characterEvent", event);
         }
+    }
+
+    public getSelfIdentifier(): string {
+        return this.userId || this.username;
+    }
+
+    public getPlayerIdentifier(snapshot: OnlinePlayerSnapshot | ActionEvent | any): string {
+        if (!snapshot) {
+            return "";
+        }
+        return snapshot.userId ?? snapshot.id ?? snapshot.username ?? "";
+    }
+
+    public isSelfEvent(snapshot: OnlinePlayerSnapshot | ActionEvent | any): boolean {
+        const identifier = this.getPlayerIdentifier(snapshot);
+        return identifier === this.userId || identifier === this.username;
     }
 }

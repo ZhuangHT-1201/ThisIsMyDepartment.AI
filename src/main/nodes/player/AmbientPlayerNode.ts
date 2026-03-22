@@ -6,10 +6,10 @@ import { SceneNode, SceneNodeAspect } from "../../../engine/scene/SceneNode";
 import { TiledSceneArgs } from "../../../engine/scene/TiledMapNode";
 import { createCanvas, getRenderingContext } from "../../../engine/util/graphics";
 import { Layer } from "../../constants";
-import { Gather } from "../../Gather";
+import { ThisIsMyDepartmentApp } from "../../ThisIsMyDepartmentApp";
 import { intensifyColor } from "../LightNode";
 
-export class AmbientPlayerNode extends SceneNode<Gather> {
+export class AmbientPlayerNode extends SceneNode<ThisIsMyDepartmentApp> {
     private color: Color;
     private readonly intensity: number;
     private gradient: CanvasGradient | null = null;

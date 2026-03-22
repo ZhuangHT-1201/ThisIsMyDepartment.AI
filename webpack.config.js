@@ -7,12 +7,24 @@ const dotenv = require('dotenv').config({ path: __dirname + '/.env' });
 const { DefinePlugin } = require("webpack");
 
 const gitRevisionPlugin = new GitRevisionPlugin();
+const envConfig = { ...process.env, ...dotenv.parsed };
+
+const transformIndexHtml = (content) => {
+    return content.toString()
+        .replaceAll("__TIMD_BACKEND_BASE_URL__", envConfig.TIMD_BACKEND_BASE_URL || "__TIMD_BACKEND_BASE_URL__")
+        .replaceAll("__TIMD_SOCKET_BASE_URL__", envConfig.TIMD_SOCKET_BASE_URL || "__TIMD_SOCKET_BASE_URL__")
+        .replaceAll("__TIMD_JITSI_DOMAIN__", envConfig.TIMD_JITSI_DOMAIN || "__TIMD_JITSI_DOMAIN__")
+        .replaceAll("__TIMD_JITSI_MUC__", envConfig.TIMD_JITSI_MUC || "__TIMD_JITSI_MUC__")
+        .replaceAll("__TIMD_JITSI_SERVICE_URL__", envConfig.TIMD_JITSI_SERVICE_URL || "__TIMD_JITSI_SERVICE_URL__")
+        .replaceAll("__TIMD_JITSI_CLIENT_NODE__", envConfig.TIMD_JITSI_CLIENT_NODE || "__TIMD_JITSI_CLIENT_NODE__")
+        .replace("src=\"node_modules/steal/steal.js\" main=\"lib/main/ThisIsMyDepartmentApp\"", "src=\"ThisIsMyDepartmentApp.js\"");
+};
 
 module.exports = {
-    entry: `./lib/main/Gather.js`,
+    entry: `./lib/main/ThisIsMyDepartmentApp.js`,
     output: {
         path: path.join(__dirname, "dist"),
-        filename: "Gather.js",
+        filename: "ThisIsMyDepartmentApp.js",
         chunkFilename: "[name].js?m=[chunkhash]"
     },
     mode: "development",
@@ -55,7 +67,7 @@ module.exports = {
     },
     plugins: [
         new DefinePlugin({
-            "process.env": JSON.stringify({...process.env, ...dotenv.parsed})
+            "process.env": JSON.stringify(envConfig)
         }),
         gitRevisionPlugin,
         new GenerateJsonPlugin("appinfo.json", {
@@ -65,10 +77,7 @@ module.exports = {
         new CopyWebpackPlugin({ patterns: [
             //{ from: "src/demo/**/*.{html,css}" },
             { from: "assets/", to: "assets/" },
-            { from: "index.html", transform(content) {
-                return content.toString().replace("src=\"node_modules/steal/steal.js\" main=\"lib/main/Gather\"",
-                    "src=\"Gather.js\"");
-            }},
+            { from: "index.html", transform(content) { return transformIndexHtml(content); }},
             { from: "style.css" },
             { from: "manifest.webmanifest" }
         ]})

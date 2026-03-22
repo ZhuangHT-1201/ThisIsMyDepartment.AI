@@ -4,7 +4,7 @@ import { InteractiveNode } from "./InteractiveNode";
 import { SceneNodeArgs } from "../../engine/scene/SceneNode";
 import { asset } from "../../engine/assets/Assets";
 import { PreCharacterTags } from "./CharacterNode";
-import { Gather } from "../Gather";
+import { ThisIsMyDepartmentApp } from "../ThisIsMyDepartmentApp";
 import { PresentationBoardNode } from "./PresentationBoardNode";
 import { ControllerEvent } from "../../engine/input/ControllerEvent";
 
@@ -63,7 +63,7 @@ export class PresentationNode extends InteractiveNode {
                         if (player != null) {
                             player.startPresentation();
                         }
-                        (this.getGame() as Gather).dimLights();
+                        (this.getGame() as ThisIsMyDepartmentApp).dimLights();
                     }
                 });
             }
@@ -93,7 +93,7 @@ export class PresentationNode extends InteractiveNode {
             player.endPresentation();
             this.getScene()?.camera.focus(player, { follow: true });
         }
-        (this.getGame() as Gather).turnOnAllLights();
+        (this.getGame() as ThisIsMyDepartmentApp).turnOnAllLights();
     }
 
     private nextSlide(): void {

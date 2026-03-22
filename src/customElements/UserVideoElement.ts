@@ -3,7 +3,6 @@ import { SoundMeter } from "../SoundMeter";
 import JitsiConference from "../typings/Jitsi/JitsiConference";
 import JitsiLocalTrack from "../typings/Jitsi/modules/RTC/JitsiLocalTrack";
 import JitsiRemoteTrack from "../typings/Jitsi/modules/RTC/JitsiRemoteTrack";
-import { HoverOver } from "./HoverOver";
 
 /**
  * Class for showing/hiding elements on hover over.
@@ -12,14 +11,15 @@ export class UserVideoElement extends HTMLElement {
     public readonly nameSpan = document.createElement("span");
     private readonly videoElement = document.createElement("video");
     private readonly wrapperElement = document.createElement("div");
-    private readonly hoverOver = new HoverOver();
+    private readonly disabledOverlay = document.createElement("div");
     private track?: JitsiLocalTrack | JitsiRemoteTrack;
     private meterRefresh: any;
     private soundMeter?: SoundMeter;
+    private videoEnabled = true;
 
-    public constructor(private userName: string, private readonly room?: JitsiConference, private readonly participantId?: string) {
+    public constructor(private userName: string, room?: JitsiConference, private readonly participantId?: string, private readonly isLocal = false) {
         super();
-        if (room != null) {
+        if (isLocal) {
             this.id = "localUserVideo";
         }
     }
@@ -53,7 +53,7 @@ export class UserVideoElement extends HTMLElement {
 
     private initVideoElement(): void {
         this.videoElement.autoplay = true;
-        if (this.room != null) {
+        if (this.isLocal) {
             this.videoElement.id = "localVideo";
         }
         this.videoElement.poster = "https://www.dovercourt.org/wp-content/uploads/2019/11/610-6104451_image-placeholder-png-user-profile-placeholder-image-png.jpg";
@@ -66,32 +66,15 @@ export class UserVideoElement extends HTMLElement {
     }
     private initWrapperElement(): void {
         this.wrapperElement.style.position = "relative";
-        if (this.room != null) {
-            this.hoverOver.addButton("assets/images/mic.svg", (val) => {
-                console.log(val);
-                const track = this.room!.getLocalAudioTrack()?.getOriginalStream().getAudioTracks().slice(-1)[0];
-                if (val && track) {
-                    track.enabled = false;
-                } else if (track) {
-                    track.enabled = true;
-                }
-            }, "assets/images/mic_off.svg", "Mute", "Unmute");
-            this.hoverOver.addButton("assets/images/video.svg", (val) => {
-                if (val) {
-                    this.room!.getLocalVideoTrack()?.mute();
-                } else {
-                    this.room!.getLocalVideoTrack()?.unmute();
-                }
-            }, "assets/images/video_off.svg", "Hide video", "Show video");
-            this.hoverOver.classList.add("hoverOver");
-            this.wrapperElement.appendChild(this.hoverOver);
-        }
-
         this.wrapperElement.classList.add("userVideo");
+        this.disabledOverlay.classList.add("videoDisabledOverlay");
+        this.disabledOverlay.textContent = "Camera Off";
         this.wrapperElement.appendChild(this.videoElement);
+        this.wrapperElement.appendChild(this.disabledOverlay);
         this.wrapperElement.appendChild(this.nameSpan);
         this.wrapperElement.addEventListener("click", this.handleWrapperClick.bind(this));
         this.wrapperElement.addEventListener("contextmenu", this.handleWrapperContext.bind(this));
+        this.applyVideoState();
     }
 
     private handleWrapperClick(): void {
@@ -162,6 +145,20 @@ export class UserVideoElement extends HTMLElement {
     public setTrack(track: JitsiRemoteTrack | JitsiLocalTrack): void {
         track.attach(this.videoElement);
         this.track = track;
+        this.applyVideoState();
+    }
+
+    public setVideoEnabled(enabled: boolean): void {
+        this.videoEnabled = enabled;
+        this.applyVideoState();
+    }
+
+    public isVideoEnabled(): boolean {
+        return this.videoEnabled;
+    }
+
+    public getUserName(): string {
+        return this.userName;
     }
 
     public changeTrack(): void {
@@ -187,28 +184,46 @@ export class UserVideoElement extends HTMLElement {
         const style = document.createElement("style");
 
         style.textContent = `
-            .hoverOver {
-                position: absolute;
-                bottom: 2em;
-                z-index: 1008;
-            }
             .userVideo {
                 position: relative;
                 display: flex;
                 flex-direction: column;
                 align-items: center;
                 gap: 10px;
+                width: 180px;
             }
             .smallVideo {
-                border-radius: 500px;
-                width: 150px;
-                height: 150px;
+                border-radius: 18px;
+                width: 180px;
+                height: 120px;
                 object-fit: cover;
                 border: 4px solid transparent;
                 cursor: zoom-in;
+                background: #000;
             }
             .speaking {
                 border: 4px solid green;
+            }
+            .videoDisabledOverlay {
+                position: absolute;
+                inset: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: #000;
+                color: rgba(255, 255, 255, 0.8);
+                font-size: 12px;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+                border-radius: 18px;
+                opacity: 0;
+                pointer-events: none;
+            }
+            .userVideo.videoDisabled .videoDisabledOverlay {
+                opacity: 1;
+            }
+            .userVideo.videoDisabled .smallVideo {
+                visibility: hidden;
             }
             span {
                 color: white;
@@ -219,6 +234,10 @@ export class UserVideoElement extends HTMLElement {
 
     public getVideoElement(): HTMLVideoElement {
         return this.videoElement;
+    }
+
+    private applyVideoState(): void {
+        this.wrapperElement.classList.toggle("videoDisabled", !this.videoEnabled);
     }
 }
 

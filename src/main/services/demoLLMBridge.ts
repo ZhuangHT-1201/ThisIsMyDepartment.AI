@@ -2,7 +2,7 @@ import agentDefinitions from "../agents/index";
 import type { LLMAgentDefinition } from "../agents/AgentDefinition";
 import { LLMAgentService, LLMChatResponse } from "./LLMAgentService";
 
-const DEFAULT_AGENT_URL = "http://127.0.0.1:5050/chat";
+const DEFAULT_AGENT_URL = "/api/agents/default/chat";
 const DEFAULT_TIMEOUT_MS = 60_000;
 
 export interface SetupBridgeOptions {

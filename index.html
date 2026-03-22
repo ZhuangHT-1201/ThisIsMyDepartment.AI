@@ -3,8 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <meta
+      name="description"
+      content="ThisIsMyDepartment.AI is a self-hostable virtual department environment with identity-aware avatars, shared spaces, and AI-controlled characters."
+    />
+    <meta name="theme-color" content="#e56026" />
+    <meta name="application-name" content="ThisIsMyDepartment.AI" />
 
-    <title>Gather</title>
+    <title>ThisIsMyDepartment.AI</title>
     <link rel="stylesheet" href="style.css" type="text/css" />
     <link rel="icon" href="assets/favicon.ico" />
     <link rel="manifest" href="manifest.webmanifest" />
@@ -12,11 +18,21 @@
   <body>
     <div id="background"></div>
     <div id="videos"></div>
+    <script>
+      window.THISISMYDEPARTMENT_CONFIG = Object.assign({}, window.THISISMYDEPARTMENT_CONFIG, {
+        backendBaseUrl: "__TIMD_BACKEND_BASE_URL__",
+        socketBaseUrl: "__TIMD_SOCKET_BASE_URL__",
+        jitsiDomain: "__TIMD_JITSI_DOMAIN__",
+        jitsiMuc: "__TIMD_JITSI_MUC__",
+        jitsiServiceUrl: "__TIMD_JITSI_SERVICE_URL__",
+        jitsiClientNode: "__TIMD_JITSI_CLIENT_NODE__"
+      });
+    </script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/strophe.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/strophejs-plugin-disco/lib/strophe.disco.js?v=1"></script>
     <script src="assets/lib-jitsi-meet.min.js"></script>
-    <script src="node_modules/steal/steal.js" main="lib/main/Gather"></script>
+    <script src="node_modules/steal/steal.js" main="lib/main/ThisIsMyDepartmentApp"></script>
     <div id="close-in-frame-btn">X</div>
   </body>
 </html>

@@ -6,9 +6,12 @@
 # Build output
 /coverage/
 /node_modules/
+/server/node_modules/
 /lib/
 /out/
 /dist/
+/server/dist/
+/server/data/
 /.webpack/
 /*.tgz
 

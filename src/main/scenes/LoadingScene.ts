@@ -1,10 +1,11 @@
-import { Gather } from "../Gather";
+import { ThisIsMyDepartmentApp } from "../ThisIsMyDepartmentApp";
 import { Scene } from "../../engine/scene/Scene";
 import { ProgressBarNode } from "../../engine/scene/ProgressBarNode";
 import { FadeTransition } from "../../engine/transitions/FadeTransition";
 import { GameScene } from "./GameScene";
+import { TitleScene } from "./TitleScene";
 
-export class LoadingScene extends Scene<Gather> {
+export class LoadingScene extends Scene<ThisIsMyDepartmentApp> {
     private progressBar!: ProgressBarNode;
 
     public setup(): void {
@@ -21,7 +22,7 @@ export class LoadingScene extends Scene<Gather> {
 
     public async activate(): Promise<void> {
         this.game.assets.load(this.updateProgress.bind(this)).then(() => {
-            this.game.scenes.setScene(GameScene as any);
+            this.game.scenes.setScene(this.game.shouldShowAvatarOnboarding() ? TitleScene as any : GameScene as any);
         });
     }
 

@@ -7,7 +7,7 @@ import { SceneNode, SceneNodeAspect } from "../../engine/scene/SceneNode";
 import { TiledSceneArgs } from "../../engine/scene/TiledMapNode";
 import { createCanvas, getRenderingContext } from "../../engine/util/graphics";
 import { radians } from "../../engine/util/math";
-import { Gather } from "../Gather";
+import { ThisIsMyDepartmentApp } from "../ThisIsMyDepartmentApp";
 
 export function intensifyColor(color: RGBColor, f: number): Color {
     let r = f * color.getRed(), g = f * color.getGreen(), b = f * color.getBlue();
@@ -29,7 +29,7 @@ export function intensifyColor(color: RGBColor, f: number): Color {
     return new RGBColor(r, g, b);
 }
 
-export class LightNode extends SceneNode<Gather> {
+export class LightNode extends SceneNode<ThisIsMyDepartmentApp> {
     private color: Color;
     private intensity: number;
     private readonly polygon: Polygon2 | null;

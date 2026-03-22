@@ -2,7 +2,7 @@
 import { Sound } from "../../engine/assets/Sound";
 import { SoundNode, } from "../../engine/scene/SoundNode";
 import { TiledSceneArgs } from "../../engine/scene/TiledMapNode";
-import { Gather } from "../Gather";
+import { ThisIsMyDepartmentApp } from "../ThisIsMyDepartmentApp";
 
 const soundAssets = [
 ];
@@ -13,7 +13,7 @@ function getAssetIndexForName(name: string): number {
     return soundMapping[name] ?? -1;
 }
 
-export class TiledSoundNode extends SoundNode<Gather> {
+export class TiledSoundNode extends SoundNode<ThisIsMyDepartmentApp> {
     @asset(soundAssets)
     private static sounds: Sound[];
 

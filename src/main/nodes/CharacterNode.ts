@@ -11,7 +11,7 @@ import { clamp } from "../../engine/util/math";
 import { rnd } from "../../engine/util/random";
 import { sleep } from "../../engine/util/time";
 import { Layer, STANDARD_FONT } from "../constants";
-import { Gather } from "../Gather";
+import { ThisIsMyDepartmentApp } from "../ThisIsMyDepartmentApp";
 import { CollisionNode } from "./CollisionNode";
 import { DialogNode } from "./DialogNode";
 import { InteractiveNode } from "./InteractiveNode";
@@ -32,7 +32,7 @@ export enum PostCharacterTags {
     DANCE = "dance"
 }
 
-export abstract class CharacterNode extends OnlineSceneNode<Gather> {
+export abstract class CharacterNode extends OnlineSceneNode<ThisIsMyDepartmentApp> {
 
     @asset(STANDARD_FONT)
     private static readonly dialogFont: BitmapFont;
@@ -51,7 +51,7 @@ export abstract class CharacterNode extends OnlineSceneNode<Gather> {
     public abstract getDeceleration(): number;
 
 
-    private petNode: AsepriteNode<Gather>;
+    private petNode: AsepriteNode<ThisIsMyDepartmentApp>;
     public inConversation = false;
     public isPlayer = false;
     protected isBot = false;
@@ -77,7 +77,7 @@ export abstract class CharacterNode extends OnlineSceneNode<Gather> {
     private particleAngle = 0;
 
     private dialogNode: DialogNode;
-    private nameLabel?: TextNode<Gather>;
+    private nameLabel?: TextNode<ThisIsMyDepartmentApp>;
 
     protected speakerNode?: SceneNode;
     protected shareAudioId?: string;
@@ -85,7 +85,7 @@ export abstract class CharacterNode extends OnlineSceneNode<Gather> {
     public constructor(keysOfPropertiesToSync: Array<string>, args: AsepriteNodeArgs) {
         super({keysOfPropertiesToSync: [...keysOfPropertiesToSync, "position", "direction", "velocity", "tag", "inGhostMode"],...args});
         this.velocity = new Vector2(0, 0);
-        this.petNode = new AsepriteNode<Gather>({ aseprite: CharacterNode.petSprite, tag: "idle" });
+        this.petNode = new AsepriteNode<ThisIsMyDepartmentApp>({ aseprite: CharacterNode.petSprite, tag: "idle" });
         this.appendChild(this.petNode);
         this.sparkEmitter = new ParticleNode({
             offset: () => this.particleOffset,
@@ -308,8 +308,8 @@ export abstract class CharacterNode extends OnlineSceneNode<Gather> {
             return;
         }
         if (!this.nameLabel) {
-            this.nameLabel = new TextNode<Gather>({
-                font: Gather.smallFont,
+            this.nameLabel = new TextNode<ThisIsMyDepartmentApp>({
+                font: ThisIsMyDepartmentApp.smallFont,
                 color: "#ffffff",
                 outlineColor: "#000000",
                 fallbackFont: "14px 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', 'Noto Sans CJK SC', sans-serif",
@@ -388,7 +388,11 @@ export abstract class CharacterNode extends OnlineSceneNode<Gather> {
         const node = this.getScene()?.rootNode.getDescendantById(args.nodeId);
         if (node) {
             if (args.id != null) {
-                Object.values(this.getGame().JitsiInstance!.remoteTracks)
+                const jitsiInstance = this.getGame().JitsiInstance;
+                if (!jitsiInstance) {
+                    return;
+                }
+                Object.values(jitsiInstance.remoteTracks)
                     .map(tracks => tracks.filter(t => t.isAudioTrack()))
                     .filter(v => v.length > 0)
                     .forEach(tracks => {

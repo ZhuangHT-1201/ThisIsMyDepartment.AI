@@ -11,7 +11,8 @@ export abstract class OnlineSceneNode<T extends Game = Game> extends AsepriteNod
     protected readonly isPlayer: boolean;
     private lastSubmittedState: any = {};
     private keysOfPropertiesToSync: Array<string> = [];
-    private updateFilter = (ev: any): boolean => ev.id === this.getIdentifier() && this.getIdentifier() !== this.onlineService.username;
+    private updateFilter = (ev: any): boolean => this.onlineService.getPlayerIdentifier(ev) === this.getIdentifier()
+        && this.getIdentifier() !== this.onlineService.getSelfIdentifier();
 
     public constructor({ ...args }: AsepriteNodeArgs & { keysOfPropertiesToSync: Array<string>, isPlayer?: boolean }) {
         super(args);
@@ -35,7 +36,10 @@ export abstract class OnlineSceneNode<T extends Game = Game> extends AsepriteNod
             return;
         }
 
-        const currentState: Record<string, any> = {id: this.getIdentifier()};
+        const currentState: Record<string, any> = {
+            id: this.getIdentifier(),
+            userId: this.getIdentifier()
+        };
 
         this.keysOfPropertiesToSync.forEach(property => {
             if ((this as any)[property] != null) {
@@ -54,7 +58,10 @@ export abstract class OnlineSceneNode<T extends Game = Game> extends AsepriteNod
             return;
         }
 
-        const updateObj = {id: this.getIdentifier()};
+        const updateObj = {
+            id: this.getIdentifier(),
+            userId: this.getIdentifier()
+        };
         for (const property in currentState) {
             if ((currentState as any)[property] !== this.lastSubmittedState[property]) {
                 if ((currentState as any)[property] instanceof Vector2 || property === "velocity") {
@@ -96,7 +103,7 @@ export abstract class OnlineSceneNode<T extends Game = Game> extends AsepriteNod
      * @param updateObj - The update to be handled.
      */
     public handleCharacterUpdate(updateObj: any): void {
-        if (this.getIdentifier() === this.onlineService.username) {
+        if (this.getIdentifier() === this.onlineService.getSelfIdentifier()) {
             return;
         }
         Object.keys(updateObj).forEach(key => {
@@ -104,7 +111,9 @@ export abstract class OnlineSceneNode<T extends Game = Game> extends AsepriteNod
                 if (key === "position") {
                     this.setX(updateObj.position.x);
                     this.setY(updateObj.position.y);
-                } else if (key !== "username") {
+                } else if ((key === "username" || key === "displayName") && typeof (this as any).changePlayerName === "function") {
+                    (this as any).changePlayerName(updateObj[key]);
+                } else if (key !== "username" && key !== "userId") {
                     (this as any)[key] = updateObj[key];
                 }
             }

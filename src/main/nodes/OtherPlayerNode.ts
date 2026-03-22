@@ -4,7 +4,7 @@ import { SceneNodeArgs } from "../../engine/scene/SceneNode";
 import { Vector2 } from "../../engine/graphics/Vector2";
 import { Rect } from "../../engine/geom/Rect";
 import { AmbientPlayerNode } from "./player/AmbientPlayerNode";
-import { Gather } from "../Gather";
+import { ThisIsMyDepartmentApp } from "../ThisIsMyDepartmentApp";
 import { Layer } from "../constants";
 
 export const playerSyncKeys = ["username", "speed", "acceleration", "deceleration"];
@@ -16,10 +16,12 @@ export class OtherPlayerNode extends CharacterNode {
     private readonly acceleration = 10000;
     private readonly deceleration = 600;
     private initDone = false;
+    public username = "";
+    private displayName = "";
 
-    public constructor(id: string, public spriteIndex = 0, args?: SceneNodeArgs) {
+    public constructor(id: string, public spriteIndex = 0, displayName?: string, args?: SceneNodeArgs) {
         super(playerSyncKeys, {
-            aseprite: Gather.characterSprites[spriteIndex],
+            aseprite: ThisIsMyDepartmentApp.characterSprites[spriteIndex],
             anchor: Direction.BOTTOM,
             childAnchor: Direction.CENTER,
             tag: "idle",
@@ -30,9 +32,11 @@ export class OtherPlayerNode extends CharacterNode {
             ...args
         });
         this.identifier = id;
+        this.username = displayName ?? id;
+        this.displayName = displayName ?? id;
         const ambientPlayerLight = new AmbientPlayerNode();
         this.appendChild(ambientPlayerLight);
-        this.setNameLabel(this.identifier);
+        this.setNameLabel(this.displayName);
     }
 
     public getSpeed(): number {
@@ -52,14 +56,23 @@ export class OtherPlayerNode extends CharacterNode {
     public syncCharacterState(): void {}
 
     public changePlayerName(playerName: string): void {
+        this.username = playerName;
+        this.displayName = playerName;
         this.setNameLabel(playerName);
-        this.identifier = playerName;
+    }
+
+    public getDisplayName(): string {
+        return this.displayName;
+    }
+
+    public matchesKnownPlayerName(playerNames: Set<string>): boolean {
+        return playerNames.has(this.username) || playerNames.has(this.displayName) || playerNames.has(String(this.getIdentifier()));
     }
 
     public changeSprite(spriteIndex: number): void {
-        if (Gather.characterSprites.length > spriteIndex && spriteIndex > 0) {
+        if (ThisIsMyDepartmentApp.characterSprites.length > spriteIndex && spriteIndex > 0) {
             this.spriteIndex = spriteIndex;
-            this.setAseprite(Gather.characterSprites[spriteIndex]);
+            this.setAseprite(ThisIsMyDepartmentApp.characterSprites[spriteIndex]);
         }
     }
 

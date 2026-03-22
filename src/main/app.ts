@@ -15,7 +15,7 @@ app.on("certificate-error", (event, webContents, url, error, certificate, callba
     callback(true);
 });
 
-app.name = "Gather";
+app.name = "ThisIsMyDepartment.AI";
 app.allowRendererProcessReuse = true;
 
 const createWindow = () => {
@@ -26,7 +26,7 @@ const createWindow = () => {
         minWidth: GAME_WIDTH,
         minHeight: GAME_HEIGHT,
         fullscreen: true,
-        title: "Gather",
+        title: "ThisIsMyDepartment.AI",
         icon: path.join(__dirname, "../renderer/assets/appicon.iconset/icon_256x256.png")
     });
 

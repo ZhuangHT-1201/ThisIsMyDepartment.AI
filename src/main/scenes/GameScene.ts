@@ -1,4 +1,4 @@
-import { Gather } from "../Gather";
+import { ThisIsMyDepartmentApp } from "../ThisIsMyDepartmentApp";
 import { Scene } from "../../engine/scene/Scene";
 import { PlayerNode } from "../nodes/PlayerNode";
 import { asset } from "../../engine/assets/Assets";
@@ -25,41 +25,63 @@ import { IFrameNode } from "../nodes/IFrameNode";
 import { SpeakerNode } from "../nodes/SpeakerNode";
 import { CatNode } from "../nodes/CatNode";
 import { TiledTextNode } from "../nodes/TiledTextNode";
-import { JitsiControlsNode } from "../nodes/JitsiControlsNode";
 import { NotificationNode } from "../nodes/NotificationNode";
 
-export class GameScene extends Scene<Gather> {
+export class GameScene extends Scene<ThisIsMyDepartmentApp> {
     @asset(STANDARD_FONT)
     private static font: BitmapFont;
 
     @asset("map/map.tiledmap.json")
     private static map: TiledMap;
 
+    private static mapLoadPromise?: Promise<TiledMap>;
+
     private debugMode: boolean = false;
+    private fpsCounterNode?: FpsCounterNode<ThisIsMyDepartmentApp>;
 
-    private controlsNode = new JitsiControlsNode({ x: Math.round(this.rootNode.width / 2), y: Math.round(this.rootNode.height - 10)});
-
-    public mapNode = new TiledMapNode<Gather>({ map: GameScene.map, objects: {
-        "collision": CollisionNode,
-        "player": PlayerNode,
-        "light": LightNode,
-        "cameraLimit": CameraLimitNode,
-        /* "sound": TiledSoundNode, */
-        "chair": ChairNode,
-        "powerswitch": SwitchNode,
-        "focus": FocusNode,
-        "npc": NpcNode,
-        "presentationBoard": PresentationBoardNode,
-        "presentation": PresentationNode,
-        "iframe": IFrameNode,
-        "speaker": SpeakerNode,
-        "cat": CatNode,
-        "text": TiledTextNode
-    }});
+    public mapNode!: TiledMapNode<ThisIsMyDepartmentApp>;
     public notificationNode?: NotificationNode;
 
-    public setup() {
+    private static async getLoadedMap(): Promise<TiledMap> {
+        if (GameScene.map) {
+            return GameScene.map;
+        }
+
+        if (!GameScene.mapLoadPromise) {
+            console.warn("GameScene map asset was not ready during setup; loading fallback map asset directly.");
+            GameScene.mapLoadPromise = TiledMap.load("assets/map/map.tiledmap.json").then(map => {
+                GameScene.map = map;
+                return map;
+            });
+        }
+
+        return GameScene.mapLoadPromise;
+    }
+
+    private async createMapNode(): Promise<TiledMapNode<ThisIsMyDepartmentApp>> {
+        const map = await GameScene.getLoadedMap();
+        return new TiledMapNode<ThisIsMyDepartmentApp>({ map, objects: {
+            "collision": CollisionNode,
+            "player": PlayerNode,
+            "light": LightNode,
+            "cameraLimit": CameraLimitNode,
+            /* "sound": TiledSoundNode, */
+            "chair": ChairNode,
+            "powerswitch": SwitchNode,
+            "focus": FocusNode,
+            "npc": NpcNode,
+            "presentationBoard": PresentationBoardNode,
+            "presentation": PresentationNode,
+            "iframe": IFrameNode,
+            "speaker": SpeakerNode,
+            "cat": CatNode,
+            "text": TiledTextNode
+        }});
+    }
+
+    public async setup() {
         this.inTransition = new FadeToBlackTransition({ duration: 2, delay: 1 });
+        this.mapNode = await this.createMapNode();
         this.mapNode.moveTo(0, 0).appendTo(this.rootNode).transform(m => m.scale(1));
         const player = this.mapNode.getDescendantById("Player");
         this.camera.setFollow(player);
@@ -68,18 +90,17 @@ export class GameScene extends Scene<Gather> {
         this.notificationNode = new NotificationNode(3, { x: this.rootNode.width - 12, y: 4, layer: Layer.HUD }).appendTo(this.rootNode);
 
         if (isDev()) {
-            this.rootNode.appendChild(new FpsCounterNode({
+            this.fpsCounterNode = new FpsCounterNode({
                 font: GameScene.font,
                 anchor: Direction.TOP_LEFT,
-                x: 10,
-                y: 10,
                 layer: Layer.HUD
-            }));
+            });
+            this.rootNode.appendChild(this.fpsCounterNode);
         }
 
-    this.rootNode.appendChild(this.controlsNode);
+        this.layoutHud();
 
-    this.spawnConfiguredAgents();
+        this.spawnConfiguredAgents();
 
         setTimeout(() => {
             this.game.setupScene();
@@ -88,7 +109,7 @@ export class GameScene extends Scene<Gather> {
 
     public resizeTo(width: number, height: number): void {
         super.resizeTo(width, height);
-        this.controlsNode.moveTo(Math.round(this.rootNode.width / 2), Math.round(this.rootNode.height - 10));
+        this.layoutHud();
         this.notificationNode?.moveTo(this.rootNode.width - 12, 4);
         this.game.layoutConversationWindow();
     }
@@ -152,7 +173,7 @@ export class GameScene extends Scene<Gather> {
         }
     }
 
-    private handleTeleportClick(event: ScenePointerDownEvent<Gather>): void {
+    private handleTeleportClick(event: ScenePointerDownEvent<ThisIsMyDepartmentApp>): void {
         const player = this.rootNode.getDescendantById("Player");
         if (player != null) {
             player.moveTo(event.getX(), event.getY());
@@ -173,5 +194,11 @@ export class GameScene extends Scene<Gather> {
             });
             agent.moveTo(definition.position.x, definition.position.y).appendTo(this.rootNode);
         });
+    }
+
+    private layoutHud(): void {
+        const left = 10;
+        const top = 10;
+        this.fpsCounterNode?.moveTo(left, top);
     }
 }

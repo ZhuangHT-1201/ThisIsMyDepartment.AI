@@ -19,7 +19,8 @@ interface ConversationCache {
 export class LLMAgentNode extends NpcNode {
     private readonly agentId: string;
     private readonly displayName: string;
-    private readonly systemPrompt?: string;
+    private readonly defaultSystemPrompt?: string;
+    private currentSystemPrompt?: string;
     private readonly defaultCaption: string;
     private readonly wanderArea?: { minX: number; maxX: number; minY: number; maxY: number };
     private currentTarget?: Vector2;
@@ -32,7 +33,8 @@ export class LLMAgentNode extends NpcNode {
         super(args);
         this.agentId = args.agentId;
         this.displayName = args.displayName ?? args.id ?? args.agentId;
-        this.systemPrompt = args.systemPrompt;
+        this.defaultSystemPrompt = args.systemPrompt;
+        this.currentSystemPrompt = args.systemPrompt;
         this.defaultCaption = args.caption ?? "按E键进行互动";
         this.setCaption(this.defaultCaption);
         this.setNameLabel(this.displayName);
@@ -150,6 +152,21 @@ export class LLMAgentNode extends NpcNode {
         return this.displayName;
     }
 
+    public getSystemPrompt(): string {
+        return this.currentSystemPrompt ?? "";
+    }
+
+    public setSystemPrompt(prompt?: string): void {
+        const normalized = prompt?.trim();
+        this.currentSystemPrompt = normalized && normalized.length > 0 ? normalized : undefined;
+        this.conversations.clear();
+    }
+
+    public restoreDefaultSystemPrompt(): void {
+        this.currentSystemPrompt = this.defaultSystemPrompt;
+        this.conversations.clear();
+    }
+
     public resetConversation(playerId: string): void {
         this.conversations.delete(playerId);
     }
@@ -202,8 +219,8 @@ export class LLMAgentNode extends NpcNode {
     private getConversation(playerId: string): ConversationCache {
         if (!this.conversations.has(playerId)) {
             const history: LLMChatMessage[] = [];
-            if (this.systemPrompt) {
-                history.push({ role: "system" as const, content: this.systemPrompt });
+            if (this.currentSystemPrompt) {
+                history.push({ role: "system" as const, content: this.currentSystemPrompt });
             }
             this.conversations.set(playerId, { history });
         }

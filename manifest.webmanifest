@@ -1,16 +1,18 @@
 {
     "lang": "en-US",
-    "name": "Gather",
-    "short_name": "Gather",
+    "name": "ThisIsMyDepartment.AI",
+    "short_name": "TIMD.AI",
     "start_url": "./?utm_source=web_app_manifest",
     "display": "standalone",
     "background_color": "#cecece",
     "theme_color": "#e56026",
     "categories": [
-        "games"
+        "education",
+        "productivity",
+        "collaboration"
     ],
     "orientation": "landscape",
-    "description": "Can you save the world from an unknown destiny?",
+    "description": "A self-hostable virtual department environment with persistent identity and AI characters.",
     "icons": [
         {
             "src": "assets/appicon.iconset/icon_16x16.png",
@@ -76,16 +78,6 @@
             "src": "assets/appicon.iconset/icon_1024x1024.png",
             "sizes": "1024x1024",
             "type": "image/png"
-        }
-    ],
-    "related_applications": [
-        {
-            "platform": "Web",
-            "url": "https://TODO/"
-        },
-        {
-            "platform": "steam",
-            "url": "https://store.steampowered.com/app/TODO"
         }
     ],
     "prefer_related_applications": false

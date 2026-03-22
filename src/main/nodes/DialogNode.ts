@@ -1,7 +1,7 @@
 import { TextNode } from "../../engine/scene/TextNode";
-import { Gather } from "../Gather";
+import { ThisIsMyDepartmentApp } from "../ThisIsMyDepartmentApp";
 
-export class DialogNode extends TextNode<Gather> {
+export class DialogNode extends TextNode<ThisIsMyDepartmentApp> {
     /** @inheritDoc */
     public draw(ctx: CanvasRenderingContext2D): void {
         ctx.save();

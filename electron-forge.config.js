@@ -3,25 +3,25 @@ const os = require("os");
 const path = require("path");
 
 // Package name for macOS should be different.
-const packageName = os.platform() === "darwin" ? "Gather" : "gather";
+const packageName = os.platform() === "darwin" ? "ThisIsMyDepartment.AI" : "thisismydepartment-ai";
 
 module.exports = {
     packagerConfig: {
         name: packageName,
         // https://electron.github.io/electron-packager/master/interfaces/electronpackager.win32metadataoptions.html
         win32metadata: {
-            FileDescription: "A small 2D action platformer with handcrafted pixel art, an emphasis on mood, and a blasting original soundtrack.",
-            ProductName: "Gather"
+            FileDescription: "A self-hostable virtual department environment with identity-aware avatars and AI characters.",
+            ProductName: "ThisIsMyDepartment.AI"
         },
         icon: path.resolve(__dirname, "assets", "appicon.iconset"),
-        appCopyright: "Copyright (C) 2021 Nico Hülscher",
+        appCopyright: "Copyright (C) ThisIsMyDepartment.AI contributors",
         appVersion: require(path.resolve(__dirname, "package.json")).version
     },
     makers: [
         {
             name: "@electron-forge/maker-squirrel",
             config: {
-                name: "gather"
+                name: "thisismydepartment_ai"
             }
         },
         {
@@ -34,8 +34,8 @@ module.exports = {
             name: "@electron-forge/maker-deb",
             config: {
                 icon: "./assets/appicon.iconset/icon_256x256.png",
-                productName: "Gather",
-                genericName: "Gather",
+                productName: "ThisIsMyDepartment.AI",
+                genericName: "ThisIsMyDepartment.AI",
                 categories: [
                     "Game"
                 ]
@@ -55,7 +55,7 @@ module.exports = {
                     config: "./webpack.renderer.config.js",
                     entryPoints: [
                         {
-                            js: "./lib/main/Gather.js",
+                            js: "./lib/main/ThisIsMyDepartmentApp.js",
                             name: "./"
                         }
                     ]

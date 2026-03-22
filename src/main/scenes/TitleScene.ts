@@ -1,4 +1,4 @@
-import { Gather } from "../Gather";
+import { ThisIsMyDepartmentApp } from "../ThisIsMyDepartmentApp";
 import { Scene } from "../../engine/scene/Scene";
 import { asset } from "../../engine/assets/Assets";
 import { GameScene } from "./GameScene";
@@ -11,21 +11,20 @@ import { Direction } from "../../engine/geom/Direction";
 import { PostCharacterTags } from "../nodes/CharacterNode";
 import { TextNode } from "../../engine/scene/TextNode";
 import { TextInputNode } from "../nodes/TextInputNode";
-import { OnlineService } from "../../engine/online/OnlineService";
+import { saveAvatarProfile } from "../services/profile";
 import { isDev } from "../../engine/util/env";
 
-export class TitleScene extends Scene<Gather> {
+export class TitleScene extends Scene<ThisIsMyDepartmentApp> {
     @asset("sounds/interface/click.mp3")
     private static confirmSound: Sound;
 
-    private characterNodes: Array<AsepriteNode<Gather>> =
-        Gather.characterSprites.map(aseprite => new AsepriteNode<Gather>({ aseprite, tag: PostCharacterTags.IDLE, anchor: Direction.RIGHT }));
-    private chooseNode = new TextNode<Gather>({ font: Gather.headlineFont, text: "CHOOSE CHARACTER" });
-    private confirmNode = new TextNode<Gather>({ font: Gather.standardFont, text: "⤶ SELECT", color: "grey" });
-    private containerNode = new SceneNode<Gather>();
-    private nameInputNode = new TextInputNode<Gather>("", "ENTER USERNAME", 12);
+    private characterNodes: Array<AsepriteNode<ThisIsMyDepartmentApp>> =
+        ThisIsMyDepartmentApp.characterSprites.map(aseprite => new AsepriteNode<ThisIsMyDepartmentApp>({ aseprite, tag: PostCharacterTags.IDLE, anchor: Direction.RIGHT }));
+    private chooseNode = new TextNode<ThisIsMyDepartmentApp>({ font: ThisIsMyDepartmentApp.headlineFont, text: "CHOOSE AVATAR" });
+    private confirmNode = new TextNode<ThisIsMyDepartmentApp>({ font: ThisIsMyDepartmentApp.standardFont, text: "⤶ CONTINUE", color: "white" });
+    private containerNode = new SceneNode<ThisIsMyDepartmentApp>();
+    private nameInputNode = new TextInputNode<ThisIsMyDepartmentApp>("", "SIGNED IN USER", 24);
     private index = 1;
-    private name = "";
     private hasStarted = false;
 
     public setup(): void {
@@ -39,16 +38,16 @@ export class TitleScene extends Scene<Gather> {
         this.rootNode.appendChild(this.containerNode);
         this.rootNode.appendChild(this.chooseNode);
         this.chooseNode.moveBy(0, -60);
-    this.rootNode.appendChild(this.confirmNode);
-    this.rootNode.appendChild(this.nameInputNode);
-    this.nameInputNode.onTextSubmit.connect(this.handleNameSubmitted, this);
+        this.rootNode.appendChild(this.confirmNode);
+        this.rootNode.appendChild(this.nameInputNode);
+        this.nameInputNode.onTextSubmit.connect(this.handleNameSubmitted, this);
         this.nameInputNode.moveBy(0, 60);
         this.confirmNode.moveBy(0, 90);
         this.moveLeft();
-        if (isDev()) {
+        this.nameInputNode.setText(this.game.userName);
+        if (isDev() && !this.game.userName) {
             const name = Math.random() + "";
             this.nameInputNode.setText(name);
-            this.updateName(name);
         }
     }
     private moveLeft(): void {
@@ -64,27 +63,30 @@ export class TitleScene extends Scene<Gather> {
         this.characterNodes[this.index]?.scaleBy(2);
         this.updatePositions();
     }
-    private goToGame(): void {
+    private async goToGame(): Promise<void> {
         TitleScene.confirmSound.play();
-        this.startGame();
+        await this.startGame();
     }
 
     private updatePositions(): void {
-        let posX = - Gather.characterSprites[0].width - 10;
+        let posX = - ThisIsMyDepartmentApp.characterSprites[0].width - 10;
         this.characterNodes.forEach(node => {
             posX += node.width + 10;
             node.moveTo(posX, 0);
         });
-        this.containerNode.moveTo(-this.index * (Gather.characterSprites[0].width + 10), 0);
+        this.containerNode.moveTo(-this.index * (ThisIsMyDepartmentApp.characterSprites[0].width + 10), 0);
     }
 
     public cleanup(): void {
         this.rootNode.clear();
     }
 
-    public startGame(): void {
-        this.game.onlineService.username = this.nameInputNode.text;
-        this.game.initialPlayerSprite = this.index;
+    public async startGame(): Promise<void> {
+        const result = await saveAvatarProfile(this.index);
+        if (result) {
+            this.game.setCurrentUserProfile(result.profile);
+        }
+        this.game.markAvatarOnboardingComplete(this.index);
         this.game.scenes.setScene(GameScene as any);
     }
 
@@ -97,9 +99,9 @@ export class TitleScene extends Scene<Gather> {
             this.moveLeft();
         } else if (ev.key === "ArrowRight" || ev.key === "d") {
             this.moveRight();
-        } else if ((ev.key === "Enter" || ev.key === " ") && this.name !== "") {
+        } else if (ev.key === "Enter" || ev.key === " ") {
             this.tryStartGame();
-        } else if ((ev.key === "Enter" || ev.key === " ") && this.name === "" || (ev.key === "s" || ev.key === "ArrowDown")) {
+        } else if (ev.key === "s" || ev.key === "ArrowDown") {
             this.nameInputNode.focus();
         }
     }
@@ -109,27 +111,12 @@ export class TitleScene extends Scene<Gather> {
             return;
         }
         this.hasStarted = true;
-        this.game.onlineService = new OnlineService(this.name);
-        this.goToGame();
+        void this.goToGame();
     }
 
     private handleNameSubmitted(name: string): void {
-        this.updateName(name);
-        if (name.trim().length > 0) {
-            this.tryStartGame();
-        }
-    }
-
-    private updateName(name: string): void {
-        this.game.userName = name;
-        this.name = name;
-        if (name.length > 0) {
-            this.confirmNode.setColor("white");
-            this.confirmNode.setText("⤶ CONTINUE");
-        } else {
-            this.confirmNode.setColor("grey");
-            this.confirmNode.setText("⤶ SELECT");
-        }
+        this.nameInputNode.setText(this.game.userName || name);
+        this.tryStartGame();
     }
 
     public deactivate(): void {

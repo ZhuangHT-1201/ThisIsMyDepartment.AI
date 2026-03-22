@@ -8,12 +8,12 @@ import { ControllerIntent } from "../../engine/input/ControllerIntent";
 import { SceneNodeArgs, SceneNodeAspect } from "../../engine/scene/SceneNode";
 import { isDev } from "../../engine/util/env";
 import { clamp } from "../../engine/util/math";
-import { Gather } from "../Gather";
+import { ThisIsMyDepartmentApp } from "../ThisIsMyDepartmentApp";
 import { CharacterNode, PostCharacterTags } from "./CharacterNode";
 import { InteractiveNode } from "./InteractiveNode";
 import { AmbientPlayerNode } from "./player/AmbientPlayerNode";
 
-export const playerSyncKeys = ["username", "speed", "acceleration", "deceleration"];
+export const playerSyncKeys = ["username", "speed", "acceleration", "deceleration", "spriteIndex"];
 
 export class PlayerNode extends CharacterNode {
 
@@ -27,11 +27,29 @@ export class PlayerNode extends CharacterNode {
     private leftMouseDown = false;
     private rightMouseDown = false;
     private previouslyPressed = 0;
+    public username = "";
     public spriteIndex = 0;
 
     public isPlayer = true;
 
     private gPressed = false;
+
+    private pushInteractionDebug(event: string, payload?: Record<string, unknown>): void {
+        const debugWindow = window as Window & {
+            __timdConversationDebug?: Array<Record<string, unknown>>;
+        };
+        if (!debugWindow.__timdConversationDebug) {
+            debugWindow.__timdConversationDebug = [];
+        }
+        debugWindow.__timdConversationDebug.push({
+            ts: Date.now(),
+            event,
+            ...(payload ?? {})
+        });
+        if (debugWindow.__timdConversationDebug.length > 100) {
+            debugWindow.__timdConversationDebug.splice(0, debugWindow.__timdConversationDebug.length - 100);
+        }
+    }
 
     public constructor(args?: SceneNodeArgs) {
         super(playerSyncKeys, {
@@ -65,9 +83,9 @@ export class PlayerNode extends CharacterNode {
     }
 
     public changeSprite(index = 0): void {
-        if (Gather.characterSprites.length > index && index >= 0) {
+        if (ThisIsMyDepartmentApp.characterSprites.length > index && index >= 0) {
             this.spriteIndex = index;
-            this.setAseprite(Gather.characterSprites[index]);
+            this.setAseprite(ThisIsMyDepartmentApp.characterSprites[index]);
             this.emitEvent("changeSprite", index);
         }
     }
@@ -112,8 +130,21 @@ export class PlayerNode extends CharacterNode {
         // Interact
         if (this.canInteract(ControllerIntent.PLAYER_INTERACT)) {
             const node = this.getNodeToInteractWith();
+            this.pushInteractionDebug("player_canInteract", {
+                hasNode: !!node,
+                nodeType: node?.constructor?.name ?? null
+            });
             if (node) {
                 node.interact();
+            } else {
+                const nearbyPlayer = this.getGame().findNearbyOtherPlayer();
+                this.pushInteractionDebug("player_nearbyPlayerCheck", {
+                    hasNearbyPlayer: !!nearbyPlayer,
+                    nearbyPlayerId: nearbyPlayer?.getIdentifier() ?? null
+                });
+                if (nearbyPlayer) {
+                    this.getGame().startPlayerConversation(nearbyPlayer.getIdentifier() as string, nearbyPlayer.getDisplayName());
+                }
             }
         }
         // Interact
@@ -162,13 +193,21 @@ export class PlayerNode extends CharacterNode {
     }
 
     public getIdentifier(): string {
-        return this.getGame().onlineService.username;
+        return this.getGame().onlineService.userId;
     }
 
     public activate(): void {
         super.activate();
-        this.identifier = this.getGame().onlineService.username;
-        this.setNameLabel(this.identifier);
+        this.username = this.getGame().userName;
+        this.identifier = this.getGame().onlineService.userId;
+        this.setNameLabel(this.username);
+        const publishInitialState = () => {
+            this.syncCharacterState(true);
+        };
+        this.getGame().onlineService.onPlayerConnect.connect(publishInitialState, this);
+        if (this.getGame().onlineService.isConnected()) {
+            publishInitialState();
+        }
         this.getGame().input.onDrag.filter(ev => ev.isRightStick && !!ev.direction && ev.direction.getLength() > 0.3).connect(this.handleControllerInput, this);
         const handleControllerInputChange = () => {
             this.isRunning = (this.getGame().input.currentActiveIntents & ControllerIntent.PLAYER_RUN) === ControllerIntent.PLAYER_RUN;

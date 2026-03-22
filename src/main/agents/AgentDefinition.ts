@@ -9,13 +9,15 @@ export interface LLMAgentDefinition {
     spriteIndex: number;
     /** Initial scene position in pixels. */
     position: { x: number; y: number };
-    /** Endpoint URL that should handle this agent's chat requests. */
-    agentUrl: string;
     /** Optional caption shown above the agent when idle. */
     caption?: string;
     /** Optional system prompt seeded into the conversation history. */
     systemPrompt?: string;
-    /** Override for request timeout in milliseconds. */
+    /** Provider/model metadata supplied by backend bootstrap when available. */
+    provider?: "mock" | "openai" | "anthropic" | "ollama" | "azure-openai";
+    model?: string;
+    /** Deprecated fields kept for compatibility with generated local agent definitions. */
+    agentUrl?: string;
     timeoutMs?: number;
     /** Optional axis-aligned rectangle (scene coordinates) the agent is allowed to wander inside. */
     walkArea?: { x: number; y: number; width: number; height: number };

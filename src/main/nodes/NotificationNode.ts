@@ -4,13 +4,13 @@ import { Direction } from "../../engine/geom/Direction";
 import { SceneNode } from "../../engine/scene/SceneNode";
 import { TextNode } from "../../engine/scene/TextNode";
 import { TiledSceneArgs } from "../../engine/scene/TiledMapNode";
-import { Gather } from "../Gather";
+import { ThisIsMyDepartmentApp } from "../ThisIsMyDepartmentApp";
 
-export class NotificationNode extends SceneNode<Gather> {
+export class NotificationNode extends SceneNode<ThisIsMyDepartmentApp> {
     @asset("sounds/interface/back.mp3")
     private static notificationSound: Sound;
 
-    private textNode = new TextNode<Gather>({ font: Gather.standardFont, anchor: Direction.TOP_RIGHT });
+    private textNode = new TextNode<ThisIsMyDepartmentApp>({ font: ThisIsMyDepartmentApp.standardFont, anchor: Direction.TOP_RIGHT });
     private startTime?: number;
     private endTime?: number;
     private currentTime = 0;

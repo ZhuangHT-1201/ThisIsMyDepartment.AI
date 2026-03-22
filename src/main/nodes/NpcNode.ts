@@ -9,7 +9,7 @@ import { rndItem } from "../../engine/util/random";
 import { TextNode } from "../../engine/scene/TextNode";
 import { BitmapFont } from "../../engine/assets/BitmapFont";
 import { STANDARD_FONT, Layer } from "../constants";
-import { Gather } from "../Gather";
+import { ThisIsMyDepartmentApp } from "../ThisIsMyDepartmentApp";
 import { clamp } from "../../engine/util/math";
 import { PlayerNode } from "./PlayerNode";
 import { Vector2 } from "../../engine/graphics/Vector2";
@@ -42,7 +42,7 @@ export class NpcNode extends CharacterNode {
     private readonly acceleration = 10000;
     private readonly deceleration = 800;
     private lastDirectionChange = 0;
-    private textNode: TextNode<Gather>;
+    private textNode: TextNode<ThisIsMyDepartmentApp>;
 
     public constructor(args?: NpcNodeArgs) {
         super([], {
@@ -55,7 +55,7 @@ export class NpcNode extends CharacterNode {
             ...args
         });
 
-        this.textNode = new TextNode<Gather>({
+        this.textNode = new TextNode<ThisIsMyDepartmentApp>({
             font: NpcNode.font,
             color: "white",
             outlineColor: "black",

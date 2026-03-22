@@ -42,6 +42,32 @@ export class Keyboard {
     private readonly pressed = new Set<string>();
     private readonly controllerManager = ControllerManager.getInstance();
 
+    private pushKeyboardDebug(eventName: string, event: KeyboardEvent): void {
+        if (event.code !== "KeyE") {
+            return;
+        }
+        const debugWindow = window as Window & {
+            __timdConversationDebug?: Array<Record<string, unknown>>;
+        };
+        if (!debugWindow.__timdConversationDebug) {
+            debugWindow.__timdConversationDebug = [];
+        }
+        debugWindow.__timdConversationDebug.push({
+            ts: Date.now(),
+            event: eventName,
+            code: event.code,
+            key: event.key,
+            repeat: event.repeat,
+            altKey: event.altKey,
+            ctrlKey: event.ctrlKey,
+            metaKey: event.metaKey,
+            targetTag: (event.target as HTMLElement | null)?.tagName ?? null
+        });
+        if (debugWindow.__timdConversationDebug.length > 100) {
+            debugWindow.__timdConversationDebug.splice(0, debugWindow.__timdConversationDebug.length - 100);
+        }
+    }
+
     public constructor() {
         document.addEventListener("keypress", event => this.handleKeyPress(event));
         document.addEventListener("keydown", event => this.handleKeyDown(event));
@@ -49,6 +75,7 @@ export class Keyboard {
     }
 
     private handleKeyPress(event: KeyboardEvent): void {
+        this.pushKeyboardDebug("keyboard_keypress", event);
         if (this.blockInput) {
             this.onKeyPress.getSlots().filter(slot => slot.context === this.blockInput).forEach(slot => slot.call(event));
             return;
@@ -73,6 +100,7 @@ export class Keyboard {
     }
 
     private handleKeyDown(event: KeyboardEvent): void {
+        this.pushKeyboardDebug("keyboard_keydown", event);
         if (this.blockInput) {
             this.onKeyDown.getSlots().filter(slot => slot.context === this.blockInput).forEach(slot => slot.call(event));
             return;
@@ -101,6 +129,7 @@ export class Keyboard {
     }
 
     private handleKeyUp(event: KeyboardEvent): void {
+        this.pushKeyboardDebug("keyboard_keyup", event);
         if (this.blockInput) {
             this.onKeyUp.getSlots().filter(slot => slot.context === this.blockInput).forEach(slot => slot.call(event));
             return;

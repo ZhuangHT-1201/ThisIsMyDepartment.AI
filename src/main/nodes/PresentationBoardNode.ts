@@ -2,7 +2,7 @@ import { Aseprite } from "../../engine/assets/Aseprite";
 import { Direction } from "../../engine/geom/Direction";
 import { SceneNodeArgs } from "../../engine/scene/SceneNode";
 import { asset } from "../../engine/assets/Assets";
-import { Gather } from "../Gather";
+import { ThisIsMyDepartmentApp } from "../ThisIsMyDepartmentApp";
 import { AsepriteNode } from "../../engine/scene/AsepriteNode";
 import { Layer } from "../constants";
 import { clamp } from "../../engine/util/math";
@@ -16,7 +16,7 @@ export enum PresentationBoardTags {
     OUT = "out"
 }
 
-export class PresentationBoardNode extends AsepriteNode<Gather> {
+export class PresentationBoardNode extends AsepriteNode<ThisIsMyDepartmentApp> {
     @asset("sprites/presentation.aseprite.json")
     private static readonly sprite: Aseprite;
 
@@ -33,9 +33,9 @@ export class PresentationBoardNode extends AsepriteNode<Gather> {
     private static presentationData: Array<PresentationJSON>;
     private presentationData: PresentationJSON;
 
-    private headlineNode = new TextNode<Gather>({ font: Gather.headlineFont, outlineColor: "grey", anchor: Direction.CENTER });
-    private textNode = new TextNode<Gather>({ font: Gather.standardFont, anchor: Direction.CENTER });
-    private controlsNode = new TextNode<Gather>({ font: Gather.standardFont, text: "→ next\n← previous\nQ quit", anchor: Direction.TOP_LEFT});
+    private headlineNode = new TextNode<ThisIsMyDepartmentApp>({ font: ThisIsMyDepartmentApp.headlineFont, outlineColor: "grey", anchor: Direction.CENTER });
+    private textNode = new TextNode<ThisIsMyDepartmentApp>({ font: ThisIsMyDepartmentApp.standardFont, anchor: Direction.CENTER });
+    private controlsNode = new TextNode<ThisIsMyDepartmentApp>({ font: ThisIsMyDepartmentApp.standardFont, text: "→ next\n← previous\nQ quit", anchor: Direction.TOP_LEFT});
 
     public slideIndex = 0;
 

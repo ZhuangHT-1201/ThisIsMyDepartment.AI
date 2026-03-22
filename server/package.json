@@ -1,0 +1,22 @@
+{
+  "name": "thisismydepartment-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "main": "dist/server/src/app.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "node dist/server/src/app.js",
+    "start": "node dist/server/src/app.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.8.0",
+    "dotenv": "^10.0.0",
+    "socket.io": "^2.5.1"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^20.17.30",
+    "typescript": "^4.0.2"
+  }
+}

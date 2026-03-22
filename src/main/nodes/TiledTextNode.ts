@@ -4,10 +4,10 @@ import { TextNode } from "../../engine/scene/TextNode";
 import { TiledSceneArgs } from "../../engine/scene/TiledMapNode";
 import { clamp } from "../../engine/util/math";
 import { HEADLINE_FONT, STANDARD_FONT } from "../constants";
-import { Gather } from "../Gather";
+import { ThisIsMyDepartmentApp } from "../ThisIsMyDepartmentApp";
 
 
-export class TiledTextNode extends TextNode<Gather> {
+export class TiledTextNode extends TextNode<ThisIsMyDepartmentApp> {
 
     @asset([
         HEADLINE_FONT,
