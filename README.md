@@ -26,13 +26,13 @@ The project is still being cleaned up for a first open-source release, but it is
 
 Start here depending on what you need:
 
-* [doc/getting-started.md](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/doc/getting-started.md) for local install, startup, and day-to-day usage
-* [doc/current-status.md](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/doc/current-status.md) for a snapshot of completed work, active limitations, and release-readiness notes
-* [doc/auth-integration.md](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/doc/auth-integration.md) for integrating an upstream login system
-* [doc/hosting.md](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/doc/hosting.md) for browser-hosted and reverse-proxy deployment guidance
-* [.env.example](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/.env.example), [server/.env.local.example](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/server/.env.local.example), and [server/.env.production.example](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/server/.env.production.example) for copyable runtime configuration templates
-* [doc/implementation-plan.md](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/doc/implementation-plan.md) for the repo-specific migration and cleanup plan
-* [doc/thisismydepartment-overhaul-spec.md](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/doc/thisismydepartment-overhaul-spec.md) for the original target architecture and rationale
+* [doc/getting-started.md](doc/getting-started.md) for local install, startup, and day-to-day usage
+* [doc/current-status.md](doc/current-status.md) for a snapshot of completed work, active limitations, and release-readiness notes
+* [doc/auth-integration.md](doc/auth-integration.md) for integrating an upstream login system
+* [doc/hosting.md](doc/hosting.md) for browser-hosted and reverse-proxy deployment guidance
+* [.env.example](.env.example), [server/.env.local.example](server/.env.local.example), and [server/.env.production.example](server/.env.production.example) for copyable runtime configuration templates
+* [doc/implementation-plan.md](doc/implementation-plan.md) for the repo-specific migration and cleanup plan
+* [doc/thisismydepartment-overhaul-spec.md](doc/thisismydepartment-overhaul-spec.md) for the original target architecture and rationale
 
 ## Development
 
@@ -49,8 +49,8 @@ Start here depending on what you need:
 
 * Run `npm install` in the project folder to install root dependencies. This now also installs the backend package dependencies under `server/`.
 
-For a clean local setup and first run, see [doc/getting-started.md](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/doc/getting-started.md).
-If you need non-default runtime endpoints, copy [.env.example](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/.env.example) to `.env` before starting the frontend.
+For a clean local setup and first run, see [doc/getting-started.md](doc/getting-started.md).
+If you need non-default runtime endpoints, copy [.env.example](.env.example) to `.env` before starting the frontend.
 
 ### Building the game
 
@@ -162,7 +162,7 @@ Relevant backend environment variables:
 * `AUTH_PROXY_AUTHENTICATED_VALUE`
 * `AUTH_POSTMESSAGE_ALLOWED_ORIGINS`
 
-Copyable examples live in [server/.env.local.example](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/server/.env.local.example) and [server/.env.production.example](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/server/.env.production.example). The backend itself does not auto-load a `.env` file, so pass those values through your shell or process manager.
+Copyable examples live in [server/.env.local.example](server/.env.local.example) and [server/.env.production.example](server/.env.production.example). The backend itself does not auto-load a `.env` file, so pass those values through your shell or process manager.
 
 Relevant frontend realtime environment variables for browser builds:
 
@@ -185,7 +185,7 @@ Realtime note:
 * in local development, the frontend defaults to the backend port `8787` for realtime unless `TIMD_SOCKET_BASE_URL` is set explicitly
 * upgrading `socket.io-client` still requires coordinated client and server testing because the browser protocol remains legacy Socket.IO v2-style
 
-See [doc/auth-integration.md](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/doc/auth-integration.md) and [doc/hosting.md](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/doc/hosting.md) for production-oriented setup.
+See [doc/auth-integration.md](doc/auth-integration.md) and [doc/hosting.md](doc/hosting.md) for production-oriented setup.
 
 ### Realtime smoke test
 
@@ -214,7 +214,7 @@ TIMD_REALTIME_URL=http://127.0.0.1:8789 npm run smoke:realtime
 
 If `8787` is already occupied by an older server process, use a fresh port for the smoke test so you validate the current build rather than stale code.
 
-Open-source release follow-up tasks are tracked in [doc/open-source-release-checklist.md](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/doc/open-source-release-checklist.md).
+Open-source release follow-up tasks are tracked in [doc/open-source-release-checklist.md](doc/open-source-release-checklist.md).
 
 ### Modifying the Scene
 

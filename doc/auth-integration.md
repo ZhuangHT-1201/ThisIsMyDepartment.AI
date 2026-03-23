@@ -13,7 +13,7 @@ Pick one primary mode based on where trust already exists in your deployment:
 
 Practical recommendation:
 
-* start from [server/.env.production.example](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/server/.env.production.example)
+* start from [server/.env.production.example](server/.env.production.example)
 * configure only the variables needed for your chosen auth mode
 * keep the institution-specific verification logic in a small upstream adapter instead of modifying the browser client
 
@@ -329,4 +329,4 @@ Or on failure:
 
 ## Current naming cleanup status
 
-Public-facing branding now uses ThisIsMyDepartment.AI. The core runtime class has been renamed to `ThisIsMyDepartmentApp`, the live browser entry is [src/main/ThisIsMyDepartmentApp.ts](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/src/main/ThisIsMyDepartmentApp.ts), and the default shared room names and browser media preference keys now use ThisIsMyDepartment.AI-specific values.
+Public-facing branding now uses ThisIsMyDepartment.AI. The core runtime class has been renamed to `ThisIsMyDepartmentApp`, the live browser entry is [src/main/ThisIsMyDepartmentApp.ts](src/main/ThisIsMyDepartmentApp.ts), and the default shared room names and browser media preference keys now use ThisIsMyDepartment.AI-specific values.

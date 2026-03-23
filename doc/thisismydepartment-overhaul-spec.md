@@ -8,7 +8,7 @@ The current repository already contains a usable virtual environment client, cha
 
 This spec is the target for the cleanup and overhaul work.
 
-The concrete execution order for this repo is documented in [doc/implementation-plan.md](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/doc/implementation-plan.md).
+The concrete execution order for this repo is documented in [doc/implementation-plan.md](doc/implementation-plan.md).
 
 ## Product Goals
 
@@ -26,33 +26,33 @@ Status note: this section summarizes the original baseline that motivated the ov
 
 ### Frontend runtime
 
-- Main game bootstrap is now routed through [src/main/ThisIsMyDepartmentApp.ts](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/src/main/ThisIsMyDepartmentApp.ts).
+- Main game bootstrap is now routed through [src/main/ThisIsMyDepartmentApp.ts](src/main/ThisIsMyDepartmentApp.ts).
 - The original client auto-started with a Guest user instead of authenticating a real user.
-- Character selection UI existed in [src/main/scenes/TitleScene.ts](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/src/main/scenes/TitleScene.ts), but it was not yet wired into a real profile flow.
+- Character selection UI existed in [src/main/scenes/TitleScene.ts](src/main/scenes/TitleScene.ts), but it was not yet wired into a real profile flow.
 
 ### Identity model
 
-- Socket multiplayer originally keyed users by a plain username string in [src/engine/online/OnlineService.ts](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/src/engine/online/OnlineService.ts).
+- Socket multiplayer originally keyed users by a plain username string in [src/engine/online/OnlineService.ts](src/engine/online/OnlineService.ts).
 - Jitsi provides a session-scoped participant ID, not a platform user identity.
 - There was no canonical app-level user object.
 
 ### Avatar state
 
-- Avatar sprites are loaded in [src/main/ThisIsMyDepartmentApp.ts](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/src/main/ThisIsMyDepartmentApp.ts).
-- Sprite changes work in [src/main/nodes/PlayerNode.ts](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/src/main/nodes/PlayerNode.ts).
+- Avatar sprites are loaded in [src/main/ThisIsMyDepartmentApp.ts](src/main/ThisIsMyDepartmentApp.ts).
+- Sprite changes work in [src/main/nodes/PlayerNode.ts](src/main/nodes/PlayerNode.ts).
 - Avatar choice was not persisted across sessions.
 
 ### Activity tracking
 
-- Conversation UI and in-memory logs exist in [src/main/ThisIsMyDepartmentApp.ts](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/src/main/ThisIsMyDepartmentApp.ts).
-- Agent-side history is cached in memory in [src/main/nodes/LLMAgentNode.ts](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/src/main/nodes/LLMAgentNode.ts).
+- Conversation UI and in-memory logs exist in [src/main/ThisIsMyDepartmentApp.ts](src/main/ThisIsMyDepartmentApp.ts).
+- Agent-side history is cached in memory in [src/main/nodes/LLMAgentNode.ts](src/main/nodes/LLMAgentNode.ts).
 - No database or API persisted user events in the original baseline.
 
 ### LLM integration
 
-- Agent abstraction is already centralized in [src/main/services/LLMAgentService.ts](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/src/main/services/LLMAgentService.ts).
-- The original wiring posted to external agent URLs via [src/main/services/demoLLMBridge.ts](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/src/main/services/demoLLMBridge.ts).
-- The original agent definitions encoded external URLs in [src/main/agents/AgentDefinition.ts](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/src/main/agents/AgentDefinition.ts).
+- Agent abstraction is already centralized in [src/main/services/LLMAgentService.ts](src/main/services/LLMAgentService.ts).
+- The original wiring posted to external agent URLs via [src/main/services/demoLLMBridge.ts](src/main/services/demoLLMBridge.ts).
+- The original agent definitions encoded external URLs in [src/main/agents/AgentDefinition.ts](src/main/agents/AgentDefinition.ts).
 
 ## Core Architectural Decision
 
@@ -171,7 +171,7 @@ Flow:
 4. Save selected avatar through `PUT /api/me/profile`.
 5. Enter the game with that saved avatar.
 
-The existing code in [src/main/scenes/TitleScene.ts](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/src/main/scenes/TitleScene.ts) should be reused, but the free-text username field should no longer define identity.
+The existing code in [src/main/scenes/TitleScene.ts](src/main/scenes/TitleScene.ts) should be reused, but the free-text username field should no longer define identity.
 
 ## Persistence Model
 
@@ -336,11 +336,11 @@ The user-owned character prompt should be stored on the user's profile or charac
 
 ### Replace anonymous bootstrap
 
-Refactor [src/main/ThisIsMyDepartmentApp.ts](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/src/main/ThisIsMyDepartmentApp.ts) so startup depends on authenticated bootstrap data rather than hardcoded Guest defaults.
+Refactor [src/main/ThisIsMyDepartmentApp.ts](src/main/ThisIsMyDepartmentApp.ts) so startup depends on authenticated bootstrap data rather than hardcoded Guest defaults.
 
 ### Rework the title scene
 
-Refactor [src/main/scenes/TitleScene.ts](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/src/main/scenes/TitleScene.ts) into one of these:
+Refactor [src/main/scenes/TitleScene.ts](src/main/scenes/TitleScene.ts) into one of these:
 
 - a first-time profile setup scene
 - an avatar edit scene reachable from settings
@@ -349,11 +349,11 @@ The username field should become read-only display or be removed from the profil
 
 ### Replace in-memory source of truth
 
-Conversation state in [src/main/ThisIsMyDepartmentApp.ts](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/src/main/ThisIsMyDepartmentApp.ts) and [src/main/nodes/LLMAgentNode.ts](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/src/main/nodes/LLMAgentNode.ts) should become a UI cache backed by persisted server data.
+Conversation state in [src/main/ThisIsMyDepartmentApp.ts](src/main/ThisIsMyDepartmentApp.ts) and [src/main/nodes/LLMAgentNode.ts](src/main/nodes/LLMAgentNode.ts) should become a UI cache backed by persisted server data.
 
 ### Track iframe activity
 
-[src/main/nodes/IFrameNode.ts](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/src/main/nodes/IFrameNode.ts) should emit structured activity events when a frame is opened, closed, or changed.
+[src/main/nodes/IFrameNode.ts](src/main/nodes/IFrameNode.ts) should emit structured activity events when a frame is opened, closed, or changed.
 
 ## Backend API Surface
 

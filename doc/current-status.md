@@ -142,7 +142,7 @@ Practical interpretation:
 
 ## Where to look next
 
-* [doc/getting-started.md](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/doc/getting-started.md) for install and local usage
-* [doc/auth-integration.md](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/doc/auth-integration.md) for upstream login handoff patterns
-* [doc/hosting.md](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/doc/hosting.md) for deployment guidance
-* [doc/open-source-release-checklist.md](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/doc/open-source-release-checklist.md) for the remaining release cleanup work
+* [doc/getting-started.md](doc/getting-started.md) for install and local usage
+* [doc/auth-integration.md](doc/auth-integration.md) for upstream login handoff patterns
+* [doc/hosting.md](doc/hosting.md) for deployment guidance
+* [doc/open-source-release-checklist.md](doc/open-source-release-checklist.md) for the remaining release cleanup work

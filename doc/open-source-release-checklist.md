@@ -27,8 +27,8 @@ This checklist captures the remaining work between the current overhaul state an
 ## Documentation follow-up
 
 - replace placeholder clone/publish instructions with the final public repository URL
-- publish a real security reporting channel in [SECURITY.md](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/SECURITY.md)
-- keep [.env.example](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/.env.example), [server/.env.local.example](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/server/.env.local.example), and [server/.env.production.example](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/server/.env.production.example) aligned with the real runtime surface as configuration evolves
+- publish a real security reporting channel in [SECURITY.md](SECURITY.md)
+- keep [.env.example](.env.example), [server/.env.local.example](server/.env.local.example), and [server/.env.production.example](server/.env.production.example) aligned with the real runtime surface as configuration evolves
 - keep institution-specific login adapters outside the public repository and document only the normalized backend handoff contract
 
 ## Product and packaging follow-up

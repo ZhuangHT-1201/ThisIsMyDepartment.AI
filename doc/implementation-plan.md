@@ -16,12 +16,12 @@ It is intentionally repo-specific. The goal is to identify the order of work, th
 
 ## Current Repo Baseline
 
-- Existing client/game code lives under [src](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/src).
-- Existing docs now include the target architecture in [doc/thisismydepartment-overhaul-spec.md](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/doc/thisismydepartment-overhaul-spec.md).
-- Existing package configuration now includes a frontend root package in [package.json](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/package.json) and a backend service package in [server/package.json](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/server/package.json).
+- Existing client/game code lives under [src](src).
+- Existing docs now include the target architecture in [doc/thisismydepartment-overhaul-spec.md](doc/thisismydepartment-overhaul-spec.md).
+- Existing package configuration now includes a frontend root package in [package.json](package.json) and a backend service package in [server/package.json](server/package.json).
 - The backend service already owns authenticated bootstrap, profile, activity, conversation, and agent chat routes.
-- Shared frontend/backend contracts live under [shared/types](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/shared/types).
-- Persistence is now SQLite-backed through [server/src/storage/stateStore.ts](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/server/src/storage/stateStore.ts).
+- Shared frontend/backend contracts live under [shared/types](shared/types).
+- Persistence is now SQLite-backed through [server/src/storage/stateStore.ts](server/src/storage/stateStore.ts).
 
 ## Status Snapshot
 
@@ -31,8 +31,8 @@ It is intentionally repo-specific. The goal is to identify the order of work, th
 
 ## Release Risk Notes
 
-- The backend package under [server/package.json](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/server/package.json) currently has a clean production dependency audit.
-- The remaining production dependency findings in the root package are concentrated in the legacy `socket.io-client` stack used by [src/engine/online/OnlineService.ts](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/src/engine/online/OnlineService.ts).
+- The backend package under [server/package.json](server/package.json) currently has a clean production dependency audit.
+- The remaining production dependency findings in the root package are concentrated in the legacy `socket.io-client` stack used by [src/engine/online/OnlineService.ts](src/engine/online/OnlineService.ts).
 - Because the browser and backend now share a legacy Socket.IO protocol contract inside this repository, a major Socket.IO upgrade must be treated as a coordinated client/server change rather than a local-only package bump.
 
 ## Proposed Repo Layout Target
@@ -67,8 +67,8 @@ Lock down the target contracts and directory strategy before changing runtime be
 
 ### Files to add or update
 
-- [doc/thisismydepartment-overhaul-spec.md](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/doc/thisismydepartment-overhaul-spec.md)
-- [doc/implementation-plan.md](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/doc/implementation-plan.md)
+- [doc/thisismydepartment-overhaul-spec.md](doc/thisismydepartment-overhaul-spec.md)
+- [doc/implementation-plan.md](doc/implementation-plan.md)
 - `shared/types/*.ts`
 
 ### Acceptance criteria
@@ -110,9 +110,9 @@ Character prompt settings
 
 ### Existing frontend files likely to consume these types later
 
-- [src/main/ThisIsMyDepartmentApp.ts](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/src/main/ThisIsMyDepartmentApp.ts)
-- [src/main/agents/AgentDefinition.ts](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/src/main/agents/AgentDefinition.ts)
-- [src/main/services/LLMAgentService.ts](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/src/main/services/LLMAgentService.ts)
+- [src/main/ThisIsMyDepartmentApp.ts](src/main/ThisIsMyDepartmentApp.ts)
+- [src/main/agents/AgentDefinition.ts](src/main/agents/AgentDefinition.ts)
+- [src/main/services/LLMAgentService.ts](src/main/services/LLMAgentService.ts)
 
 ### Acceptance criteria
 
@@ -194,15 +194,15 @@ interface AuthHandoffAdapter {
 ### Frontend work
 
 - add bootstrap loader before game startup
-- stop hardcoding Guest in [src/main/ThisIsMyDepartmentApp.ts](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/src/main/ThisIsMyDepartmentApp.ts)
+- stop hardcoding Guest in [src/main/ThisIsMyDepartmentApp.ts](src/main/ThisIsMyDepartmentApp.ts)
 - introduce a user/session state holder in the frontend
 - make display name come from authenticated user data
 
 ### Existing files likely to change
 
-- [src/main/ThisIsMyDepartmentApp.ts](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/src/main/ThisIsMyDepartmentApp.ts)
-- [src/engine/online/OnlineService.ts](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/src/engine/online/OnlineService.ts)
-- [src/Jitsi.ts](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/src/Jitsi.ts)
+- [src/main/ThisIsMyDepartmentApp.ts](src/main/ThisIsMyDepartmentApp.ts)
+- [src/engine/online/OnlineService.ts](src/engine/online/OnlineService.ts)
+- [src/Jitsi.ts](src/Jitsi.ts)
 
 ### New frontend files likely needed
 
@@ -227,7 +227,7 @@ Turn the existing title scene into first-time profile setup and avatar editing.
 
 ### Implementation approach
 
-- reuse sprite carousel behavior from [src/main/scenes/TitleScene.ts](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/src/main/scenes/TitleScene.ts)
+- reuse sprite carousel behavior from [src/main/scenes/TitleScene.ts](src/main/scenes/TitleScene.ts)
 - remove free-text username ownership from this scene
 - load saved profile on startup
 - only show onboarding when `profile.avatar` is missing
@@ -239,9 +239,9 @@ Turn the existing title scene into first-time profile setup and avatar editing.
 
 ### Frontend files likely to change
 
-- [src/main/scenes/TitleScene.ts](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/src/main/scenes/TitleScene.ts)
-- [src/main/ThisIsMyDepartmentApp.ts](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/src/main/ThisIsMyDepartmentApp.ts)
-- [src/main/nodes/PlayerNode.ts](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/src/main/nodes/PlayerNode.ts)
+- [src/main/scenes/TitleScene.ts](src/main/scenes/TitleScene.ts)
+- [src/main/ThisIsMyDepartmentApp.ts](src/main/ThisIsMyDepartmentApp.ts)
+- [src/main/nodes/PlayerNode.ts](src/main/nodes/PlayerNode.ts)
 
 ### Acceptance criteria
 
@@ -274,10 +274,10 @@ Persist user interactions under stable user IDs and sessions.
 
 ### Existing frontend files likely to change
 
-- [src/main/ThisIsMyDepartmentApp.ts](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/src/main/ThisIsMyDepartmentApp.ts)
-- [src/main/nodes/LLMAgentNode.ts](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/src/main/nodes/LLMAgentNode.ts)
-- [src/main/nodes/IFrameNode.ts](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/src/main/nodes/IFrameNode.ts)
-- [src/Jitsi.ts](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/src/Jitsi.ts)
+- [src/main/ThisIsMyDepartmentApp.ts](src/main/ThisIsMyDepartmentApp.ts)
+- [src/main/nodes/LLMAgentNode.ts](src/main/nodes/LLMAgentNode.ts)
+- [src/main/nodes/IFrameNode.ts](src/main/nodes/IFrameNode.ts)
+- [src/Jitsi.ts](src/Jitsi.ts)
 
 ### New frontend files likely needed
 
@@ -306,9 +306,9 @@ Route all AI-controlled character interactions through the backend service.
 
 ### Frontend work
 
-- replace [src/main/services/demoLLMBridge.ts](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/src/main/services/demoLLMBridge.ts) with a backend API bridge
-- simplify [src/main/services/LLMAgentService.ts](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/src/main/services/LLMAgentService.ts) so it targets internal app APIs instead of per-agent localhost URLs
-- refactor [src/main/agents/AgentDefinition.ts](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/src/main/agents/AgentDefinition.ts) away from `agentUrl`
+- replace [src/main/services/demoLLMBridge.ts](src/main/services/demoLLMBridge.ts) with a backend API bridge
+- simplify [src/main/services/LLMAgentService.ts](src/main/services/LLMAgentService.ts) so it targets internal app APIs instead of per-agent localhost URLs
+- refactor [src/main/agents/AgentDefinition.ts](src/main/agents/AgentDefinition.ts) away from `agentUrl`
 
 ### Agent context inputs
 
@@ -346,8 +346,8 @@ Keep AI-character behavior unified while reserving editable prompt configuration
 
 ### Existing frontend files likely to change
 
-- [src/main/nodes/LLMAgentNode.ts](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/src/main/nodes/LLMAgentNode.ts)
-- [src/main/ThisIsMyDepartmentApp.ts](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/src/main/ThisIsMyDepartmentApp.ts)
+- [src/main/nodes/LLMAgentNode.ts](src/main/nodes/LLMAgentNode.ts)
+- [src/main/ThisIsMyDepartmentApp.ts](src/main/ThisIsMyDepartmentApp.ts)
 
 ### New frontend files likely needed
 
@@ -377,8 +377,8 @@ Make the repo understandable and hostable as an open-source project.
 
 ### Docs to update
 
-- [README.md](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/README.md)
-- [AGENTS.md](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/AGENTS.md)
+- [README.md](README.md)
+- [AGENTS.md](AGENTS.md)
 - new `doc/hosting.md`
 - new `doc/auth-adapters.md`
 

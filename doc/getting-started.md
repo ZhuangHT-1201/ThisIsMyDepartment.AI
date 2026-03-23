@@ -45,7 +45,7 @@ Frontend runtime values are read from the root `.env` file by webpack.
 
 If you need to override the default local backend or Jitsi endpoints:
 
-1. copy [.env.example](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/.env.example) to `.env`
+1. copy [.env.example](.env.example) to `.env`
 2. edit only the values you actually need
 
 Backend runtime values are now loaded explicitly by the backend startup path.
@@ -60,7 +60,7 @@ Shell environment variables still win over file values.
 
 Recommended local workflow:
 
-1. copy [server/.env.local.example](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/server/.env.local.example) to `server/.env.local`
+1. copy [server/.env.local.example](server/.env.local.example) to `server/.env.local`
 2. edit only the values you need
 
 If you want a different file, start the backend with `SERVER_ENV_FILE=/path/to/backend.env`.
@@ -208,14 +208,14 @@ Auth integration:
 
 Reference templates:
 
-* [.env.example](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/.env.example) for frontend runtime injection
-* [server/.env.local.example](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/server/.env.local.example) for local backend values
-* [server/.env.production.example](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/server/.env.production.example) for production backend values
+* [.env.example](.env.example) for frontend runtime injection
+* [server/.env.local.example](server/.env.local.example) for local backend values
+* [server/.env.production.example](server/.env.production.example) for production backend values
 
 ## Next docs
 
 After local startup works:
 
-* read [doc/current-status.md](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/doc/current-status.md) for the current implemented scope
-* read [doc/auth-integration.md](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/doc/auth-integration.md) before connecting a real upstream login system
-* read [doc/hosting.md](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/doc/hosting.md) before deployment
+* read [doc/current-status.md](doc/current-status.md) for the current implemented scope
+* read [doc/auth-integration.md](doc/auth-integration.md) before connecting a real upstream login system
+* read [doc/hosting.md](doc/hosting.md) before deployment

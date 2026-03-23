@@ -33,4 +33,4 @@ When hosting ThisIsMyDepartment.AI:
 - set an explicit origin allowlist for the embedded `postMessage` auth bridge
 - rotate any shared-secret or JWT signing secrets used for auth handoff
 
-See [doc/auth-integration.md](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/doc/auth-integration.md) and [doc/hosting.md](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/doc/hosting.md) for deployment-specific details.
+See [doc/auth-integration.md](doc/auth-integration.md) and [doc/hosting.md](doc/hosting.md) for deployment-specific details.

@@ -2,9 +2,9 @@
 
 This document explains the current deployment shape of the repository and the minimum pieces needed to host it for a department or organization.
 
-If you have not run the project locally yet, start with [doc/getting-started.md](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/doc/getting-started.md) first. If you want a summary of what is already implemented versus still incomplete, read [doc/current-status.md](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/doc/current-status.md).
+If you have not run the project locally yet, start with [doc/getting-started.md](doc/getting-started.md) first. If you want a summary of what is already implemented versus still incomplete, read [doc/current-status.md](doc/current-status.md).
 
-Configuration templates live in [.env.example](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/.env.example), [server/.env.local.example](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/server/.env.local.example), and [server/.env.production.example](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/server/.env.production.example).
+Configuration templates live in [.env.example](.env.example), [server/.env.local.example](server/.env.local.example), and [server/.env.production.example](server/.env.production.example).
 
 ## Deployment shape
 
@@ -84,7 +84,7 @@ Browser builds can inject realtime host settings into the generated `index.html`
 * `TIMD_JITSI_SERVICE_URL`
 * `TIMD_JITSI_CLIENT_NODE`
 
-The frontend webpack config reads these from the root `.env` file, so the usual workflow is to copy [.env.example](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/.env.example) to `.env` and adjust it per deployment.
+The frontend webpack config reads these from the root `.env` file, so the usual workflow is to copy [.env.example](.env.example) to `.env` and adjust it per deployment.
 
 If you do not set them, the frontend falls back to same-host defaults:
 
@@ -113,7 +113,7 @@ The backend also exposes deployment defaults for local auth redirects and room m
 
 ### Auth integration
 
-See [doc/auth-integration.md](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/doc/auth-integration.md) for full examples.
+See [doc/auth-integration.md](doc/auth-integration.md) for full examples.
 
 Current auth-related variables include:
 
@@ -132,7 +132,7 @@ Current auth-related variables include:
 * `AUTH_PROXY_AUTHENTICATED_VALUE`
 * `AUTH_POSTMESSAGE_ALLOWED_ORIGINS`
 
-Use [server/.env.production.example](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/server/.env.production.example) as the baseline for production deployment. The backend now loads `server/.env.production` automatically when `NODE_ENV=production`, and `SERVER_ENV_FILE` can point to a different env file when a deployment wants explicit control. Shell-provided environment variables still override file values, so service managers and container platforms remain valid deployment paths.
+Use [server/.env.production.example](server/.env.production.example) as the baseline for production deployment. The backend now loads `server/.env.production` automatically when `NODE_ENV=production`, and `SERVER_ENV_FILE` can point to a different env file when a deployment wants explicit control. Shell-provided environment variables still override file values, so service managers and container platforms remain valid deployment paths.
 
 ### LLM provider routing
 
@@ -238,7 +238,7 @@ Recommended near-term deployment model:
 
 Current backend persistence uses SQLite via:
 
-* [server/src/storage/stateStore.ts](/Users/li_chuanhao/Library/CloudStorage/SynologyDrive-MacBookSync/Projects/THUShundeBuilding.AI/server/src/storage/stateStore.ts)
+* [server/src/storage/stateStore.ts](server/src/storage/stateStore.ts)
 
 Persisted entities currently include:
 
