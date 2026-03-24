@@ -9,7 +9,7 @@ It is now being refactored into a modular, reusable open-source platform, with a
 
 ## What Works Today
 
-The repository is no longer just a design draft. The current codebase already includes:
+The current codebase includes:
 
 * backend-owned authentication handoff and session bootstrap
 * stable app user IDs instead of transient guest names
