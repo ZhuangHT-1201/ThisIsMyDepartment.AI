@@ -31,6 +31,15 @@ export interface StoredConversation {
 
 const now = (): string => new Date().toISOString();
 
+const createSystemMessage = (prompt: string, createdAt = now()): ConversationMessage => ({
+    role: "system",
+    content: prompt,
+    senderId: "system",
+    senderType: "system",
+    senderName: "System",
+    createdAt
+});
+
 const cloneParticipant = (participant: ConversationParticipantRef): ConversationParticipantRef => ({
     ...participant
 });
@@ -95,14 +104,7 @@ export const getOrCreateConversation = (args: {
     const [participantOne, participantTwo] = normalizeParticipants(participants);
     const messages: ConversationMessage[] = [];
     if (args.systemPrompt && args.systemPrompt.trim().length > 0) {
-        messages.push({
-            role: "system",
-            content: args.systemPrompt,
-            senderId: "system",
-            senderType: "system",
-            senderName: "System",
-            createdAt: now()
-        });
+        messages.push(createSystemMessage(args.systemPrompt.trim()));
     }
 
     const created: StoredConversation = {
@@ -144,14 +146,7 @@ export const resetConversation = (args: {
     const [participantOne, participantTwo] = normalizeParticipants(args.participants);
     const messages: ConversationMessage[] = [];
     if (args.systemPrompt && args.systemPrompt.trim().length > 0) {
-        messages.push({
-            role: "system",
-            content: args.systemPrompt,
-            senderId: "system",
-            senderType: "system",
-            senderName: "System",
-            createdAt: now()
-        });
+        messages.push(createSystemMessage(args.systemPrompt.trim()));
     }
 
     const resetState: StoredConversation = {
@@ -163,4 +158,18 @@ export const resetConversation = (args: {
         messages
     };
     return setConversationRecord(key, resetState);
+};
+
+export const withConversationSystemPrompt = (messages: ConversationMessage[], systemPrompt?: string): ConversationMessage[] => {
+    const trimmedPrompt = systemPrompt?.trim() ?? "";
+    const nonSystemMessages = messages
+        .filter(message => message.senderType !== "system")
+        .map(message => ({ ...message }));
+
+    if (!trimmedPrompt) {
+        return nonSystemMessages;
+    }
+
+    const existingSystemMessage = messages.find(message => message.senderType === "system");
+    return [createSystemMessage(trimmedPrompt, existingSystemMessage?.createdAt), ...nonSystemMessages];
 };

@@ -47,6 +47,26 @@ const buildParticipants = (args: {
         return null;
     }
 
+    if (agent.ownerUserId) {
+        if (agent.ownerUserId === args.currentUserId) {
+            return null;
+        }
+
+        const ownerUser = getCurrentUserById(agent.ownerUserId);
+        return [
+            {
+                participantId: args.currentUserId,
+                participantType: "user",
+                displayName: args.currentUserName
+            },
+            {
+                participantId: agent.ownerUserId,
+                participantType: "user",
+                displayName: ownerUser?.displayName ?? agent.displayName
+            }
+        ];
+    }
+
     return [
         {
             participantId: args.currentUserId,

@@ -33,7 +33,7 @@ export interface BootstrapAgentDefinition {
     position: { x: number; y: number };
     caption?: string;
     defaultSystemPrompt?: string;
-    provider: "mock" | "openai" | "anthropic" | "ollama" | "azure-openai";
+    provider: "mock" | "openai" | "openrouter" | "anthropic" | "ollama" | "azure-openai";
     model: string;
     walkArea?: { x: number; y: number; width: number; height: number };
     characterRole?: "teacher" | "student" | "staff" | "custom";

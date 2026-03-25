@@ -2,14 +2,12 @@ export interface AgentScenePosition {
     x: number;
     y: number;
 }
-
 export interface AgentWalkArea {
     x: number;
     y: number;
     width: number;
     height: number;
 }
-
 export interface AgentDefinition {
     agentId: string;
     displayName: string;
@@ -25,13 +23,11 @@ export interface AgentDefinition {
     spawnByDefault?: boolean;
     updatedAt?: string;
 }
-
 export interface AgentChatRequest {
     agentId: string;
     message: string;
     sessionId?: string;
 }
-
 export interface AgentChatResponse {
     reply: string;
     conversationId: string;

@@ -22,3 +22,8 @@
 assets/music/SPOILER_theme_01.mmpz
 *.bak
 .env
+# Ignore server environment files
+/server/.env
+/server/.env.local
+/server/.env.production
+/server/.env.*.local

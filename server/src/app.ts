@@ -4,7 +4,7 @@ import type { IncomingMessage, ServerResponse } from "http";
 import { handleOptions, sendJson } from "./http/response";
 import { getServerConfig } from "./config";
 import { handleCreateActivityRoute, handleListActivitiesRoute } from "./routes/activity";
-import { handleChatWithAgentRoute, handleListAgentsRoute } from "./routes/agent";
+import { handleChatWithAgentRoute, handleListAgentsRoute, handleListUsersRoute, handleSpawnAvatarAgentRoute } from "./routes/agent";
 import { handleAuthStatusRoute, handleHandoffRoute, handleLoginPageRoute, handleLogoutRoute, handlePostMessageBridgeRoute, handleProxyLoginRoute } from "./routes/auth";
 import { handleBootstrapRoute } from "./routes/bootstrap";
 import { handleAppendConversationMessageRoute, handleGetConversationRoute } from "./routes/conversation";
@@ -57,6 +57,16 @@ const handleRequest = (request: IncomingMessage, response: ServerResponse): void
 
     if (method === "GET" && requestUrl.pathname === "/api/agents") {
         handleListAgentsRoute(request, response);
+        return;
+    }
+
+    if (method === "GET" && requestUrl.pathname === "/api/users") {
+        handleListUsersRoute(request, response);
+        return;
+    }
+
+    if (method === "POST" && requestUrl.pathname === "/api/avatar-agents/spawn") {
+        void handleSpawnAvatarAgentRoute(request, response);
         return;
     }
 

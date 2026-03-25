@@ -503,6 +503,32 @@ export const getUserRecord = (userId: string): DepartmentUser | undefined => {
     };
 };
 
+export const listUserRecords = (): DepartmentUser[] => {
+    const rows = database.prepare(`
+        SELECT user_id AS userId, display_name AS displayName, external_id AS externalId, email, organization, department, roles_json AS rolesJson
+        FROM users
+        ORDER BY display_name COLLATE NOCASE ASC, user_id ASC
+    `).all() as Array<{
+        userId: string;
+        displayName: string;
+        externalId: string | null;
+        email: string | null;
+        organization: string | null;
+        department: string | null;
+        rolesJson: string;
+    }>;
+
+    return rows.map(row => ({
+        userId: row.userId,
+        displayName: row.displayName,
+        externalId: row.externalId ?? undefined,
+        email: row.email ?? undefined,
+        organization: row.organization ?? undefined,
+        department: row.department ?? undefined,
+        roles: parseJsonObject<string[]>(row.rolesJson, [])
+    }));
+};
+
 export const setUserRecord = (user: DepartmentUser): DepartmentUser => {
     insertUserStatement.run({
         userId: user.userId,

@@ -44,15 +44,18 @@ import { shouldEnableJitsi } from "./runtimeConfig";
 import { ConversationEntry, ConversationWindow, ConversationWindowDisplayOptions } from "./ui/ConversationWindow";
 import { CharacterStatusOverlay } from "./ui/CharacterStatusOverlay";
 import { PresentationSessionOverlay } from "./ui/PresentationSessionOverlay";
+import { SceneNavigatorOverlay, SceneNavigatorRoomEntry } from "./ui/SceneNavigatorOverlay";
 import { SettingsOverlay } from "./ui/SettingsOverlay";
 import { GameScene } from "./scenes/GameScene";
+import { TiledTextNode } from "./nodes/TiledTextNode";
 import { LoadingScene } from "./scenes/LoadingScene";
 import type { LLMAgentDefinition } from "./agents/AgentDefinition";
 import type { ActivityLogType } from "./services/activity";
 import type { BootstrapState, CurrentUser, CurrentUserProfile } from "./types/currentUser";
-import type { DirectMessageEvent, PlayerConversationEvent } from "../engine/online/OnlineService";
+import type { DirectMessageEvent, PlayerConversationEvent, RoomInfoEvent } from "../engine/online/OnlineService";
 import { AppLanguage, applyLanguageToDocument, DEFAULT_LANGUAGE, getLanguagePreference, normalizeLanguage, storeLanguagePreference, translate } from "./i18n";
 import { MediaType } from "../typings/Jitsi/service/RTC/MediaType";
+import { AvatarDirectoryUserSummary, fetchAvatarDirectoryUsers, spawnAvatarAgent } from "./services/avatarDirectory";
 
 export enum GameStage {
     NONE = 0,
@@ -78,6 +81,11 @@ interface RemotePresentationSession {
     slide: number;
     presenterId: string;
 }
+
+type SpawnedAvatarPresence = NonNullable<RoomInfoEvent["spawnedAvatars"]>[number];
+
+const RIGHT_ELEVATOR_SPAWN_POINT = { x: 1488, y: 704 };
+const SPAWNED_AVATAR_WANDER_SIZE = 120;
 
 export interface PresentationAudienceMember {
     id: string;
@@ -125,6 +133,7 @@ export class ThisIsMyDepartmentApp extends Game {
     private conversationWindow?: ConversationWindow;
     private characterStatusOverlay?: CharacterStatusOverlay;
     private presentationSessionOverlay?: PresentationSessionOverlay;
+    private sceneNavigatorOverlay?: SceneNavigatorOverlay;
     private settingsOverlay?: SettingsOverlay;
     private interactionHint?: HTMLDivElement;
     private interactionHintText?: HTMLSpanElement;
@@ -149,7 +158,14 @@ export class ThisIsMyDepartmentApp extends Game {
     private readonly remotePresentationSessions = new Map<number, RemotePresentationSession>();
     private roomInitializationPromise: Promise<JitsiConference> | null = null;
     private roomInitializationError: string | null = null;
-
+    private sceneRoomEntries: Array<SceneNavigatorRoomEntry & { x: number; y: number }> = [];
+    private readonly spawnedAvatarPresences = new Map<string, SpawnedAvatarPresence>();
+    private readonly spawnedAvatarNodes = new Map<string, LLMAgentNode>();
+    private avatarDirectoryUsers: AvatarDirectoryUserSummary[] = [];
+    private avatarDirectoryLoadPromise: Promise<void> | null = null;
+    private avatarDirectoryRequestVersion = 0;
+    private avatarDirectoryError: string | null = null;
+    private avatarDirectoryBusyUserId: string | null = null;
     private readonly llmService = LLMAgentService.instance;
     private activeLLMConversation: { agent: LLMAgentNode; playerId: string; pending: boolean } | null = null;
     private activePlayerConversation: { partnerId: string; partnerName: string } | null = null;
@@ -212,6 +228,9 @@ export class ThisIsMyDepartmentApp extends Game {
         this.onlineService.onPlayerConversationEvent.connect(event => {
             this.handlePlayerConversationEvent(event);
         });
+        this.onlineService.onRoomInfoUpdate.connect(event => {
+            this.handleRoomInfoUpdate(event);
+        });
     }
     private _onlineService!: OnlineService;
 
@@ -264,11 +283,21 @@ export class ThisIsMyDepartmentApp extends Game {
         }
 
         try {
+            this.ensureSceneNavigatorOverlay();
+        } catch (error) {
+            console.error("Scene navigator UI initialization failed", error);
+        }
+
+        try {
             this.ensureInteractionHint();
             this.ensureInteractionChooser();
         } catch (error) {
             console.error("Interaction HUD initialization failed", error);
         }
+
+        this.rebuildSceneRoomDirectory();
+        this.syncSpawnedAvatarRoster(Array.from(this.spawnedAvatarPresences.values()));
+        void this.refreshAvatarDirectory();
     }
 
     private applyBootstrapState(bootstrapState: BootstrapState): void {
@@ -706,6 +735,7 @@ export class ThisIsMyDepartmentApp extends Game {
         }
 
         this.presentationSessionOverlay?.refresh();
+        this.sceneNavigatorOverlay?.setLanguage(this.currentLanguage);
 
         if (this.isInteractionChooserOpen()) {
             this.interactionChooserHelp!.textContent = this.t("interaction.chooser.help");
@@ -713,6 +743,9 @@ export class ThisIsMyDepartmentApp extends Game {
             this.renderInteractionChooser();
         }
 
+        this.rebuildSceneRoomDirectory();
+        this.syncSpawnedAvatarRoster(Array.from(this.spawnedAvatarPresences.values()), true);
+        this.refreshSceneNavigatorOverlay();
         this.updateInteractionHint();
     }
 
@@ -1054,6 +1087,7 @@ export class ThisIsMyDepartmentApp extends Game {
         const agentName = agent.getDisplayName();
         agent.inConversation = true;
         this.activeLLMConversation = { agent, playerId, pending: false };
+        this.touchSpawnedAvatarAgent(agentId);
         this.focusConversation(agentId, { name: agentName, type: "agent" });
         this.conversationWindow?.focusComposer();
     }
@@ -1192,8 +1226,11 @@ export class ThisIsMyDepartmentApp extends Game {
         const pos = player.getScenePosition();
         const spawnOffset = this.getInitialSpawnOffset();
         player.remove().moveTo(pos.x + spawnOffset.x, pos.y + spawnOffset.y).appendTo(this.getGameScene().rootNode);
+        player.syncCharacterState(true);
         MusicManager.getInstance().loopTrack(0);
         FxManager.getInstance().playSounds();
+        this.rebuildSceneRoomDirectory();
+        this.syncSpawnedAvatarRoster(Array.from(this.spawnedAvatarPresences.values()));
     }
 
     private getInitialSpawnOffset(): { x: number; y: number } {
@@ -1713,7 +1750,8 @@ export class ThisIsMyDepartmentApp extends Game {
             senderName: displayName,
             text,
             timestamp: Date.now(),
-            fromSelf: false
+            fromSelf: false,
+            authoredByAi: false
         });
     }
 
@@ -1742,7 +1780,8 @@ export class ThisIsMyDepartmentApp extends Game {
             senderName: event.fromDisplayName,
             text: event.text,
             timestamp: event.timestamp || Date.now(),
-            fromSelf: false
+            fromSelf: false,
+            authoredByAi: false
         });
     }
 
@@ -1802,6 +1841,28 @@ export class ThisIsMyDepartmentApp extends Game {
             this.characterStatusOverlay = new CharacterStatusOverlay();
         }
         this.characterStatusOverlay.open(this);
+    }
+
+    private ensureSceneNavigatorOverlay(): void {
+        if (!this.isInGameScene()) {
+            return;
+        }
+        if (!this.sceneNavigatorOverlay) {
+            this.sceneNavigatorOverlay = new SceneNavigatorOverlay();
+        }
+        this.sceneNavigatorOverlay.open(this, {
+            language: this.currentLanguage,
+            onTeleport: roomId => {
+                this.teleportToRoom(roomId);
+            },
+            onRefreshUsers: async () => {
+                await this.refreshAvatarDirectory(true);
+            },
+            onSpawnAvatar: async userId => {
+                await this.spawnAvatarFromDirectory(userId);
+            }
+        });
+        this.refreshSceneNavigatorOverlay();
     }
 
     private repositionConversationWindow(): void {
@@ -1913,9 +1974,7 @@ export class ThisIsMyDepartmentApp extends Game {
         this.presentConversation(partnerId);
         this.repositionConversationWindow();
         this.updateConversationMediaLayout();
-        if (partner.type === "player") {
-            void this.syncStoredConversation(partnerId, partner.name);
-        }
+        void this.syncStoredConversation(partnerId, partner.type, partner.name);
     }
 
     private appendConversationEntry(partnerId: string, entry: ConversationEntry): void {
@@ -1965,6 +2024,7 @@ export class ThisIsMyDepartmentApp extends Game {
 
         const agentId = agent.getAgentId();
         const agentName = agent.getDisplayName();
+    this.touchSpawnedAvatarAgent(agentId);
         conversation.pending = true;
         this.conversationWindow?.clearComposer();
         this.presentConversation(agentId);
@@ -1978,7 +2038,8 @@ export class ThisIsMyDepartmentApp extends Game {
             senderName: this.userName,
             text: trimmed,
             timestamp: Date.now(),
-            fromSelf: true
+            fromSelf: true,
+            authoredByAi: false
         });
         this.recordActivity({
             type: "agent_chat_sent",
@@ -2006,7 +2067,8 @@ export class ThisIsMyDepartmentApp extends Game {
                     senderName: agentName,
                     text: reply,
                     timestamp: Date.now(),
-                    fromSelf: false
+                    fromSelf: false,
+                    authoredByAi: true
                 });
                 this.recordActivity({
                     type: "agent_chat_received",
@@ -2029,7 +2091,8 @@ export class ThisIsMyDepartmentApp extends Game {
                 senderName: agentName,
                 text: "(Agent unavailable)",
                 timestamp: Date.now(),
-                fromSelf: false
+                fromSelf: false,
+                authoredByAi: true
             });
         } finally {
             if (this.activeLLMConversation?.agent === agent) {
@@ -2064,7 +2127,8 @@ export class ThisIsMyDepartmentApp extends Game {
             senderName: this.userName,
             text: trimmed,
             timestamp: Date.now(),
-            fromSelf: true
+            fromSelf: true,
+            authoredByAi: false
         });
         void this.persistConversationMessage({
             participantId: partnerId,
@@ -2110,7 +2174,8 @@ export class ThisIsMyDepartmentApp extends Game {
                 senderName: this.userName,
                 text: trimmed,
                 timestamp,
-                fromSelf: true
+                fromSelf: true,
+                authoredByAi: false
             });
             void this.persistConversationMessage({
                 participantId: id,
@@ -2151,7 +2216,8 @@ export class ThisIsMyDepartmentApp extends Game {
             senderName: this.userName,
             text: trimmed,
             timestamp: Date.now(),
-            fromSelf: true
+            fromSelf: true,
+            authoredByAi: false
         });
         if (partner.type === "player") {
             void this.persistConversationMessage({
@@ -2164,11 +2230,11 @@ export class ThisIsMyDepartmentApp extends Game {
         }
     }
 
-    private async syncStoredConversation(partnerId: string, partnerName: string): Promise<void> {
+    private async syncStoredConversation(partnerId: string, partnerType: "agent" | "player", partnerName: string): Promise<void> {
         const requestId = (this.conversationSyncRequests.get(partnerId) ?? 0) + 1;
         this.conversationSyncRequests.set(partnerId, requestId);
 
-        const conversation = await fetchConversation("user", partnerId, partnerName);
+        const conversation = await fetchConversation(partnerType === "agent" ? "agent" : "user", partnerId, partnerName);
         if (this.conversationSyncRequests.get(partnerId) !== requestId || !conversation) {
             return;
         }
@@ -2180,7 +2246,8 @@ export class ThisIsMyDepartmentApp extends Game {
                 senderName: message.senderName ?? (message.senderId === this.getCurrentUserId() ? this.userName : partnerName),
                 text: message.content,
                 timestamp: Date.parse(message.createdAt) || Date.now(),
-                fromSelf: message.senderId === this.getCurrentUserId()
+                fromSelf: message.senderId === this.getCurrentUserId(),
+                authoredByAi: message.senderType === "agent"
             }));
 
         const mergedEntries = this.mergeConversationEntries(this.conversationLogs.get(partnerId) ?? [], entries);
@@ -2220,7 +2287,8 @@ export class ThisIsMyDepartmentApp extends Game {
                     senderName: message.senderName ?? (message.senderId === this.getCurrentUserId() ? this.userName : currentPartner.name),
                     text: message.content,
                     timestamp: Date.parse(message.createdAt) || Date.now(),
-                    fromSelf: message.senderId === this.getCurrentUserId()
+                    fromSelf: message.senderId === this.getCurrentUserId(),
+                    authoredByAi: message.senderType === "agent"
                 }));
             const mergedEntries = this.mergeConversationEntries(this.conversationLogs.get(args.participantId) ?? [], entries);
             this.conversationLogs.set(args.participantId, mergedEntries);
@@ -2248,6 +2316,7 @@ export class ThisIsMyDepartmentApp extends Game {
     private areConversationEntriesEquivalent(left: ConversationEntry, right: ConversationEntry): boolean {
         return left.senderId === right.senderId
             && left.senderName === right.senderName
+            && left.authoredByAi === right.authoredByAi
             && left.text === right.text
             && Math.abs(left.timestamp - right.timestamp) <= 5000;
     }
@@ -2328,6 +2397,291 @@ export class ThisIsMyDepartmentApp extends Game {
 
         if (!videos.hidden) {
             this.positionConversationMediaStrip(videos);
+        }
+    }
+
+    private handleRoomInfoUpdate(event: RoomInfoEvent): void {
+        const presences = event.spawnedAvatars ?? [];
+        this.spawnedAvatarPresences.clear();
+        presences.forEach(presence => {
+            this.spawnedAvatarPresences.set(presence.ownerUserId, presence);
+        });
+
+        if (this.isInGameScene()) {
+            this.syncSpawnedAvatarRoster(presences);
+        }
+        this.refreshSceneNavigatorOverlay();
+    }
+
+    private rebuildSceneRoomDirectory(): void {
+        if (!this.isInGameScene()) {
+            return;
+        }
+
+        const labelNodes = this.getGameScene().rootNode.getDescendantsByType<TiledTextNode>(TiledTextNode);
+        const rawEntries = labelNodes
+            .map(node => {
+                const name = node.getText().trim();
+                if (!name) {
+                    return null;
+                }
+                const position = node.getScenePosition();
+                return {
+                    name,
+                    x: Math.round(position.x + (node.getWidth() / 2)),
+                    y: Math.round(position.y + node.getHeight() + 16)
+                };
+            })
+            .filter((entry): entry is { name: string; x: number; y: number } => !!entry);
+
+        const totals = new Map<string, number>();
+        rawEntries.forEach(entry => {
+            totals.set(entry.name, (totals.get(entry.name) ?? 0) + 1);
+        });
+
+        const seen = new Map<string, number>();
+        this.sceneRoomEntries = rawEntries
+            .map(entry => {
+                const occurrence = (seen.get(entry.name) ?? 0) + 1;
+                seen.set(entry.name, occurrence);
+                const duplicateCount = totals.get(entry.name) ?? 1;
+                const suffix = duplicateCount > 1 ? ` ${occurrence}` : "";
+                return {
+                    id: `${entry.name}:${entry.x}:${entry.y}`,
+                    name: `${entry.name}${suffix}`,
+                    subtitle: this.t("navigator.rooms.locationHint"),
+                    x: entry.x,
+                    y: entry.y
+                };
+            })
+            .sort((left, right) => left.name.localeCompare(right.name));
+
+        this.refreshSceneNavigatorOverlay();
+    }
+
+    private refreshSceneNavigatorOverlay(): void {
+        this.sceneNavigatorOverlay?.setRooms(this.sceneRoomEntries);
+        this.sceneNavigatorOverlay?.setLoadingUsers(!!this.avatarDirectoryLoadPromise);
+        this.sceneNavigatorOverlay?.setUserError(this.avatarDirectoryError);
+        this.sceneNavigatorOverlay?.setBusyUserId(this.avatarDirectoryBusyUserId);
+
+        const selfUserId = this.getCurrentUserId();
+        const activePresence = this.spawnedAvatarPresences.get(selfUserId);
+        this.sceneNavigatorOverlay?.setActiveAvatarLabel(activePresence?.displayName ?? null);
+        this.sceneNavigatorOverlay?.setAvatars(this.avatarDirectoryUsers
+            .filter(user => user.userId !== selfUserId)
+            .map(user => ({
+                ...user,
+                statusLabel: user.isOnline
+                    ? this.t("navigator.avatars.statusOnline")
+                    : Array.from(this.spawnedAvatarPresences.values()).some(presence => presence.targetUserId === user.userId)
+                    ? this.t("navigator.avatars.statusActive")
+                    : user.hasCharacterSystemPrompt
+                        ? this.t("navigator.avatars.statusPromptConfigured")
+                        : undefined
+            })));
+    }
+
+    private async refreshAvatarDirectory(force = false): Promise<void> {
+        if (this.avatarDirectoryLoadPromise && !force) {
+            await this.avatarDirectoryLoadPromise;
+            return;
+        }
+
+        const requestVersion = this.avatarDirectoryRequestVersion + 1;
+        this.avatarDirectoryRequestVersion = requestVersion;
+        const currentLoadPromise = (async () => {
+            this.avatarDirectoryError = null;
+            this.refreshSceneNavigatorOverlay();
+            try {
+                const users = await fetchAvatarDirectoryUsers();
+                this.avatarDirectoryUsers = [...users].sort((left, right) => left.displayName.localeCompare(right.displayName));
+            } catch (error) {
+                console.warn("Avatar directory load failed", error);
+                this.avatarDirectoryUsers = [];
+                this.avatarDirectoryError = this.t("navigator.avatars.loadFailed");
+            } finally {
+                if (this.avatarDirectoryRequestVersion === requestVersion) {
+                    this.avatarDirectoryLoadPromise = null;
+                }
+                this.refreshSceneNavigatorOverlay();
+            }
+        })();
+
+        this.avatarDirectoryLoadPromise = currentLoadPromise;
+        this.refreshSceneNavigatorOverlay();
+        await currentLoadPromise;
+    }
+
+    private getAvatarSpawnAnchor(): { x: number; y: number } {
+        return { ...RIGHT_ELEVATOR_SPAWN_POINT };
+    }
+
+    private getSpawnedAvatarSummonPosition(ownerUserId: string, agentId: string): { x: number; y: number } {
+        const offsetSeed = `${ownerUserId}:${agentId}`;
+        let hash = 0;
+        for (let index = 0; index < offsetSeed.length; index += 1) {
+            hash = ((hash << 5) - hash) + offsetSeed.charCodeAt(index);
+            hash |= 0;
+        }
+
+        const offsetOptions = [
+            { x: 28, y: 0 },
+            { x: -28, y: 0 },
+            { x: 0, y: 28 },
+            { x: 0, y: -28 },
+            { x: 22, y: 22 },
+            { x: -22, y: 22 }
+        ];
+        const offset = offsetOptions[Math.abs(hash) % offsetOptions.length];
+
+        if (ownerUserId === this.getCurrentUserId()) {
+            const position = this.getPlayer().getScenePosition();
+            return { x: position.x + offset.x, y: position.y + offset.y };
+        }
+
+        const ownerNode = this.getOtherPlayerById(ownerUserId);
+        if (ownerNode) {
+            const position = ownerNode.getScenePosition();
+            return { x: position.x + offset.x, y: position.y + offset.y };
+        }
+
+        return { ...RIGHT_ELEVATOR_SPAWN_POINT };
+    }
+
+    private buildSpawnedAvatarWanderArea(center: { x: number; y: number }): { x: number; y: number; width: number; height: number } {
+        return {
+            x: center.x - (SPAWNED_AVATAR_WANDER_SIZE / 2),
+            y: center.y - (SPAWNED_AVATAR_WANDER_SIZE / 2),
+            width: SPAWNED_AVATAR_WANDER_SIZE,
+            height: SPAWNED_AVATAR_WANDER_SIZE
+        };
+    }
+
+    private async spawnAvatarFromDirectory(targetUserId: string): Promise<void> {
+        const trimmedUserId = targetUserId.trim();
+        if (!trimmedUserId || this.avatarDirectoryBusyUserId) {
+            return;
+        }
+
+        const targetUser = this.avatarDirectoryUsers.find(user => user.userId === trimmedUserId);
+        if (targetUser?.isOnline) {
+            this.showNotification(this.t("navigator.avatars.spawnOnlineBlocked", { name: targetUser.displayName }));
+            return;
+        }
+
+        this.avatarDirectoryBusyUserId = trimmedUserId;
+        this.refreshSceneNavigatorOverlay();
+
+        try {
+            const agent = await spawnAvatarAgent({
+                targetUserId: trimmedUserId,
+                position: this.getAvatarSpawnAnchor()
+            });
+            if (!agent) {
+                this.showNotification(this.t("navigator.avatars.spawnFailed"));
+                return;
+            }
+
+            const summonPosition = this.getSpawnedAvatarSummonPosition(this.getCurrentUserId(), agent.agentId);
+            this.onlineService.emitSpawnedAvatarUpsert({
+                ownerUserId: this.getCurrentUserId(),
+                targetUserId: trimmedUserId,
+                agentId: agent.agentId,
+                displayName: agent.displayName,
+                spriteIndex: agent.spriteIndex,
+                position: {
+                    x: agent.position.x,
+                    y: agent.position.y
+                },
+                summonPosition,
+                wanderArea: this.buildSpawnedAvatarWanderArea(summonPosition),
+                lastInteractionAt: new Date().toISOString(),
+                expiresAt: new Date(Date.now() + (5 * 60 * 1000)).toISOString()
+            });
+            this.showNotification(this.t("navigator.avatars.spawned", { name: agent.displayName }));
+        } catch (error) {
+            console.warn("Avatar spawn failed", error);
+            this.showNotification(this.t("navigator.avatars.spawnFailed"));
+        } finally {
+            this.avatarDirectoryBusyUserId = null;
+            this.refreshSceneNavigatorOverlay();
+        }
+    }
+
+    private teleportToRoom(roomId: string): void {
+        const room = this.sceneRoomEntries.find(entry => entry.id === roomId);
+        if (!room || !this.isInGameScene()) {
+            return;
+        }
+
+        const player = this.getPlayer();
+        player.moveTo(room.x, room.y);
+        this.getCamera().moveTo(room.x, room.y);
+        this.showNotification(this.t("navigator.rooms.teleported", { name: room.name }));
+    }
+
+    private syncSpawnedAvatarRoster(presences: SpawnedAvatarPresence[], forceRecreate = false): void {
+        if (!this.isInGameScene()) {
+            return;
+        }
+
+        const activeOwners = new Set<string>();
+        presences.forEach(presence => {
+            activeOwners.add(presence.ownerUserId);
+            const existingNode = this.spawnedAvatarNodes.get(presence.ownerUserId);
+            const shouldRecreate = forceRecreate
+                || !existingNode
+                || existingNode.getAgentId() !== presence.agentId
+                || existingNode.getDisplayName() !== presence.displayName;
+
+            let node = existingNode;
+            if (shouldRecreate) {
+                if (existingNode) {
+                    if (this.activeLLMConversation?.agent === existingNode) {
+                        this.closeLLMConversation(existingNode);
+                    }
+                    existingNode.remove();
+                }
+                node = new LLMAgentNode({
+                    id: `spawned-avatar-${presence.ownerUserId}`,
+                    agentId: presence.agentId,
+                    spriteIndex: presence.spriteIndex,
+                    displayName: presence.displayName,
+                    caption: this.t("navigator.avatars.caption")
+                });
+                this.getGameScene().rootNode.appendChild(node);
+                this.spawnedAvatarNodes.set(presence.ownerUserId, node);
+            }
+
+            node!.setNavigation({
+                summonTarget: presence.summonPosition,
+                walkArea: presence.wanderArea
+            });
+            if (shouldRecreate) {
+                node!.moveTo(presence.position.x, presence.position.y);
+            }
+        });
+
+        Array.from(this.spawnedAvatarNodes.entries()).forEach(([ownerUserId, node]) => {
+            if (activeOwners.has(ownerUserId)) {
+                return;
+            }
+            if (this.activeLLMConversation?.agent === node) {
+                this.closeLLMConversation(node);
+            }
+            node.remove();
+            this.spawnedAvatarNodes.delete(ownerUserId);
+        });
+    }
+
+    private touchSpawnedAvatarAgent(agentId: string): void {
+        if (!agentId.trim()) {
+            return;
+        }
+        const isSpawnedAvatar = Array.from(this.spawnedAvatarPresences.values()).some(presence => presence.agentId === agentId);
+        if (isSpawnedAvatar) {
+            this.onlineService.emitSpawnedAvatarTouch(agentId);
         }
     }
 

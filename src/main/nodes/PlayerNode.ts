@@ -208,6 +208,11 @@ export class PlayerNode extends CharacterNode {
             this.syncCharacterState(true);
         };
         this.getGame().onlineService.onPlayerConnect.connect(publishInitialState, this);
+        this.getGame().onlineService.onOtherPlayerConnect.connect(playerId => {
+            if (playerId && playerId !== this.getGame().onlineService.userId) {
+                publishInitialState();
+            }
+        }, this);
         if (this.getGame().onlineService.isConnected()) {
             publishInitialState();
         }

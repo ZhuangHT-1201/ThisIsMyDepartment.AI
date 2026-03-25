@@ -14,6 +14,7 @@ export class CharacterStatusOverlay {
     private static readonly BUTTON_BACKGROUND_INACTIVE = "linear-gradient(180deg, rgba(56, 66, 92, 0.94), rgba(28, 34, 50, 0.96))";
 
     private root?: HTMLDivElement;
+    private collapseButton?: HTMLButtonElement;
     private previewCanvas?: HTMLCanvasElement;
     private nameValue?: HTMLDivElement;
     private playerChatsValue?: HTMLDivElement;
@@ -26,6 +27,7 @@ export class CharacterStatusOverlay {
     private audioToggleButton?: HTMLButtonElement;
     private videoToggleButton?: HTMLButtonElement;
     private app?: ThisIsMyDepartmentApp;
+    private collapsed = false;
     private lastSnapshotKey = "";
     private statsUserId = "";
     private statsActivityVersion = -1;
@@ -43,6 +45,7 @@ export class CharacterStatusOverlay {
             document.body.appendChild(this.root);
         }
         this.root.hidden = false;
+        this.applyCollapsedState();
         this.refresh();
         this.maybeRefreshStats(true);
     }
@@ -50,6 +53,7 @@ export class CharacterStatusOverlay {
     public close(): void {
         this.root?.remove();
         this.root = undefined;
+        this.collapseButton = undefined;
         this.previewCanvas = undefined;
         this.nameValue = undefined;
         this.playerChatsValue = undefined;
@@ -66,6 +70,7 @@ export class CharacterStatusOverlay {
         this.statsUserId = "";
         this.statsActivityVersion = -1;
         this.statsFetchPromise = undefined;
+        document.documentElement.style.removeProperty("--timd-character-status-height");
         this.statsSummary = {
             playerChats: 0,
             agentChats: 0,
@@ -123,11 +128,13 @@ export class CharacterStatusOverlay {
 
         this.drawSpritePreview(spriteIndex);
         this.maybeRefreshStats();
+        this.syncLayoutMetrics();
     }
 
     private createRoot(): HTMLDivElement {
         const app = this.app!;
         const root = document.createElement("div");
+        root.className = "timd-character-status";
         root.style.position = "fixed";
         root.style.top = "16px";
         root.style.left = "16px";
@@ -138,6 +145,7 @@ export class CharacterStatusOverlay {
         root.style.fontFamily = getUiFontStack(app.getLanguage());
 
         const panel = document.createElement("div");
+    panel.className = "timd-character-status__panel";
         panel.style.position = "relative";
         panel.style.padding = "10px";
         panel.style.border = `1px solid ${CharacterStatusOverlay.BORDER_COLOR}`;
@@ -154,6 +162,9 @@ export class CharacterStatusOverlay {
         trim.style.pointerEvents = "none";
         trim.style.border = "1px solid rgba(164, 190, 255, 0.12)";
         trim.style.clipPath = "polygon(0 8px, 8px 0, calc(100% - 8px) 0, 100% 8px, 100% calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%, 0 calc(100% - 8px))";
+
+        const collapseButton = this.createCollapseButton();
+        this.collapseButton = collapseButton;
 
         const header = document.createElement("div");
         header.style.display = "grid";
@@ -266,11 +277,50 @@ export class CharacterStatusOverlay {
         actions.appendChild(this.createActionButton(app.t("status.action.settings"), () => this.app?.openSettingsOverlay("media"), true));
 
         panel.appendChild(trim);
+        panel.appendChild(collapseButton);
         panel.appendChild(header);
         panel.appendChild(metaGrid);
         panel.appendChild(actions);
         root.appendChild(panel);
         return root;
+    }
+
+    private createCollapseButton(): HTMLButtonElement {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "timd-sidebar-toggle timd-sidebar-toggle--character";
+        button.onclick = () => {
+            this.collapsed = !this.collapsed;
+            this.applyCollapsedState();
+            this.syncLayoutMetrics();
+        };
+        return button;
+    }
+
+    private applyCollapsedState(): void {
+        if (!this.root) {
+            return;
+        }
+
+        this.root.classList.toggle("timd-character-status--collapsed", this.collapsed);
+        if (this.collapseButton) {
+            this.collapseButton.textContent = this.collapsed ? "›" : "‹";
+            this.collapseButton.title = this.collapsed ? "Expand character panel" : "Collapse character panel";
+            this.collapseButton.setAttribute("aria-label", this.collapseButton.title);
+        }
+    }
+
+    private syncLayoutMetrics(): void {
+        if (!this.root) {
+            return;
+        }
+
+        requestAnimationFrame(() => {
+            if (!this.root) {
+                return;
+            }
+            document.documentElement.style.setProperty("--timd-character-status-height", `${this.root.offsetHeight}px`);
+        });
     }
 
     private createMetaRow(parent: HTMLElement, label: string, initialValue: string): HTMLDivElement {

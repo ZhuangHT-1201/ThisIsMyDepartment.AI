@@ -2,6 +2,12 @@
 :root {
     --timd-ui-font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
     --timd-code-font: 'SFMono-Regular', 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+    --timd-sidebar-top: 16px;
+    --timd-sidebar-left: 16px;
+    --timd-sidebar-gap: 12px;
+    --timd-sidebar-bottom-gap: 16px;
+    --timd-sidebar-collapsed-width: 30px;
+    --timd-character-status-height: 316px;
 }
 
 html, body {
@@ -297,4 +303,241 @@ button {
 .timd-interaction-chooser__item-subtitle {
     color: #c3d1f3;
     font-size: 11px;
+}
+
+.timd-character-status {
+    transition: transform 180ms ease;
+    transform: translateX(0);
+    transform-origin: left center;
+}
+
+.timd-character-status--collapsed {
+    transform: translateX(calc(-100% + var(--timd-sidebar-collapsed-width)));
+}
+
+.timd-character-status__panel,
+.timd-scene-navigator__panel {
+    position: relative;
+}
+
+.timd-sidebar-toggle {
+    position: absolute;
+    top: 8px;
+    right: 4px;
+    z-index: 3;
+    width: 22px;
+    height: 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(164, 190, 255, 0.26);
+    background: linear-gradient(180deg, rgba(44, 63, 102, 0.96), rgba(20, 31, 54, 0.96));
+    color: #eef3ff;
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 1;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.timd-character-status .timd-sidebar-toggle {
+    top: 8px;
+    right: 4px;
+}
+
+.timd-scene-navigator {
+    position: fixed;
+    top: calc(var(--timd-sidebar-top) + var(--timd-character-status-height) + var(--timd-sidebar-gap));
+    bottom: var(--timd-sidebar-bottom-gap);
+    left: var(--timd-sidebar-left);
+    width: min(312px, calc(100vw - 32px));
+    z-index: 9996;
+    pointer-events: auto;
+    color: #eef3ff;
+    font-family: var(--timd-ui-font);
+    display: flex;
+    flex-direction: column;
+    transition: transform 180ms ease;
+    transform: translateX(0);
+    transform-origin: left center;
+}
+
+.timd-scene-navigator.timd-scene-navigator--collapsed {
+    transform: translateX(calc(-100% + var(--timd-sidebar-collapsed-width)));
+}
+
+.timd-scene-navigator__panel {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    height: 100%;
+    padding: 12px;
+    border: 1px solid rgba(164, 190, 255, 0.24);
+    background: linear-gradient(160deg, rgba(22, 29, 44, 0.96), rgba(11, 16, 26, 0.96));
+    box-shadow: 0 22px 56px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    clip-path: polygon(0 10px, 10px 0, calc(100% - 10px) 0, 100% 10px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 10px 100%, 0 calc(100% - 10px));
+    overflow: hidden;
+}
+
+.timd-scene-navigator__tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.timd-scene-navigator__tab {
+    border: 1px solid rgba(164, 190, 255, 0.18);
+    background: rgba(255, 255, 255, 0.04);
+    color: #c3d1f3;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 10px 12px;
+}
+
+.timd-scene-navigator__tab--active {
+    border-color: rgba(127, 177, 255, 0.82);
+    background: linear-gradient(135deg, rgba(72, 126, 255, 0.34), rgba(35, 86, 204, 0.22));
+    color: #eef3ff;
+}
+
+.timd-scene-navigator__body {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+    flex: 1 1 auto;
+}
+
+.timd-scene-navigator__header,
+.timd-scene-navigator__section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 0;
+}
+
+.timd-scene-navigator__section {
+    overflow: hidden;
+    flex: 1 1 auto;
+}
+
+.timd-scene-navigator__section[hidden] {
+    display: none;
+}
+
+.timd-scene-navigator__title {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.timd-scene-navigator__subtitle,
+.timd-scene-navigator__section-subtitle,
+.timd-scene-navigator__item-subtitle,
+.timd-scene-navigator__active-avatar,
+.timd-scene-navigator__empty {
+    color: #c3d1f3;
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.timd-scene-navigator__section-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.timd-scene-navigator__section-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.timd-scene-navigator__section-title {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.timd-scene-navigator__refresh,
+.timd-scene-navigator__action {
+    border: 1px solid rgba(164, 190, 255, 0.22);
+    background: linear-gradient(180deg, rgba(44, 63, 102, 0.96), rgba(20, 31, 54, 0.96));
+    color: #eef3ff;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.timd-scene-navigator__refresh {
+    padding: 8px 10px;
+}
+
+.timd-scene-navigator__list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow: auto;
+    min-height: 0;
+}
+
+.timd-scene-navigator__item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+    padding: 10px;
+    border: 1px solid rgba(164, 190, 255, 0.16);
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.timd-scene-navigator__item-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
+.timd-scene-navigator__item-title {
+    color: #eef3ff;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.25;
+}
+
+.timd-scene-navigator__action {
+    min-width: 78px;
+    padding: 8px 10px;
+}
+
+.timd-scene-navigator__refresh:disabled,
+.timd-scene-navigator__action:disabled {
+    opacity: 0.56;
+    cursor: default;
+}
+
+.timd-scene-navigator__error {
+    color: #ffd0d0;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+@media (max-width: 920px) {
+    .timd-scene-navigator {
+        top: auto;
+        bottom: 16px;
+        left: 16px;
+        right: 16px;
+        width: auto;
+    }
+
+    .timd-scene-navigator__panel {
+        max-height: min(42vh, 420px);
+    }
 }

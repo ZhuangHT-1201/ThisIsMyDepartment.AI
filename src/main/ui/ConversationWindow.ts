@@ -11,6 +11,7 @@ export interface ConversationEntry {
     text: string;
     timestamp: number;
     fromSelf?: boolean;
+    authoredByAi?: boolean;
 }
 
 export interface ConversationWindowDisplayOptions {
@@ -353,7 +354,7 @@ export class ConversationWindow extends SceneNode<ThisIsMyDepartmentApp> {
             message.style.gap = "4px";
 
             const meta = document.createElement("div");
-            meta.textContent = `${fromSelf ? this.t("conversation.sender.you") : entry.senderName} • ${this.formatTime(entry.timestamp)}`;
+            meta.textContent = `${this.formatSenderLabel(entry)} • ${this.formatTime(entry.timestamp)}`;
             meta.style.fontSize = "11px";
             meta.style.letterSpacing = "0.03em";
             meta.style.color = fromSelf ? "rgba(173, 226, 255, 0.82)" : "rgba(244, 217, 197, 0.82)";
@@ -400,6 +401,15 @@ export class ConversationWindow extends SceneNode<ThisIsMyDepartmentApp> {
         this.composerSubmit.style.opacity = this.composerDisabled ? "0.6" : "1";
         this.composerSubmit.style.cursor = this.composerDisabled ? "default" : "pointer";
         this.composerInput.style.opacity = this.composerDisabled ? "0.72" : "1";
+    }
+
+    private formatSenderLabel(entry: ConversationEntry): string {
+        const baseLabel = entry.fromSelf ? this.t("conversation.sender.you") : entry.senderName;
+        if (!entry.authoredByAi) {
+            return baseLabel;
+        }
+
+        return `${baseLabel} (${this.t("conversation.sender.ai")})`;
     }
 
     private t(key: string, params?: Record<string, string | number>): string {

@@ -17,11 +17,25 @@ interface ConnectedUser {
     sessionId?: string;
 }
 
+interface SpawnedAvatarPresence {
+    ownerUserId: string;
+    targetUserId: string;
+    agentId: string;
+    displayName: string;
+    spriteIndex: number;
+    position: { x: number; y: number };
+    summonPosition?: { x: number; y: number };
+    wanderArea?: { x: number; y: number; width: number; height: number };
+    lastInteractionAt: string;
+    expiresAt: string;
+}
+
 interface RoomState {
     roomId: string;
     hostUserId?: string;
     users: Map<string, ConnectedUser>;
     characterStates: Map<string, Record<string, unknown>>;
+    spawnedAvatarPresences: Map<string, SpawnedAvatarPresence>;
     gameTime?: number;
     gameState?: string;
     roomInfo: Record<string, unknown>;
@@ -36,6 +50,7 @@ interface ResolvedIdentity {
 const serverConfig = getServerConfig();
 const rooms = new Map<string, RoomState>();
 const socketIndex = new Map<string, { roomId: string; userId: string }>();
+const SPAWNED_AVATAR_IDLE_TIMEOUT_MS = 5 * 60 * 1000;
 
 const getOrCreateRoom = (roomId: string): RoomState => {
     const existing = rooms.get(roomId);
@@ -47,6 +62,7 @@ const getOrCreateRoom = (roomId: string): RoomState => {
         roomId,
         users: new Map<string, ConnectedUser>(),
         characterStates: new Map<string, Record<string, unknown>>(),
+        spawnedAvatarPresences: new Map<string, SpawnedAvatarPresence>(),
         roomInfo: {}
     };
     rooms.set(roomId, created);
@@ -69,12 +85,52 @@ const buildRoomInfoPayload = (room: RoomState, extra?: Record<string, unknown>):
     host: getHostDisplayName(room),
     users: getRoomDisplayNames(room),
     userIds: Array.from(room.users.keys()),
+    spawnedAvatars: Array.from(room.spawnedAvatarPresences.values()),
     gameTime: room.gameTime,
     ...extra
 });
 
+const nowIso = (): string => new Date().toISOString();
+
+const buildExpiryIso = (baseMs = Date.now()): string => new Date(baseMs + SPAWNED_AVATAR_IDLE_TIMEOUT_MS).toISOString();
+
+const pruneExpiredSpawnedAvatars = (room: RoomState): boolean => {
+    const nowMs = Date.now();
+    let changed = false;
+    room.spawnedAvatarPresences.forEach((presence, ownerUserId) => {
+        const expiresAtMs = Date.parse(presence.expiresAt);
+        if (Number.isFinite(expiresAtMs) && expiresAtMs <= nowMs) {
+            room.spawnedAvatarPresences.delete(ownerUserId);
+            changed = true;
+        }
+    });
+    return changed;
+};
+
+const emitRoomInfo = (io: SocketServerLike, room: RoomState, extra?: Record<string, unknown>): void => {
+    if (pruneExpiredSpawnedAvatars(room)) {
+        io.to(room.roomId).emit("roomInfo", buildRoomInfoPayload(room, extra));
+        return;
+    }
+    io.to(room.roomId).emit("roomInfo", buildRoomInfoPayload(room, extra));
+};
+
 const getRoomUsers = (roomId: string): string[] => {
     return getRoomDisplayNames(getOrCreateRoom(roomId));
+};
+
+export const isUserConnected = (userId: string): boolean => {
+    if (!userId.trim()) {
+        return false;
+    }
+
+    for (const room of rooms.values()) {
+        if (room.users.has(userId)) {
+            return true;
+        }
+    }
+
+    return false;
 };
 
 const resolveRoomId = (socket: SocketLike): string => {
@@ -236,10 +292,10 @@ export const attachRealtimeServer = (httpServer: HttpServer): { getRoomUsers: (r
         socketIndex.set(socket.id, { roomId, userId: user.userId });
         socket.join(roomId);
 
-        io.to(roomId).emit("roomInfo", buildRoomInfoPayload(room, {
+        emitRoomInfo(io, room, {
             playerJoined: user.displayName,
             playerJoinedUserId: user.userId
-        }));
+        });
 
         socket.emit("playersUpdate", Array.from(room.characterStates.values()));
         if (typeof room.gameState === "string" && room.gameState.length > 0) {
@@ -370,7 +426,95 @@ export const attachRealtimeServer = (httpServer: HttpServer): { getRoomUsers: (r
                 ...connection.room.roomInfo,
                 ...payload
             };
-            io.to(connection.room.roomId).emit("roomInfo", buildRoomInfoPayload(connection.room));
+            emitRoomInfo(io, connection.room);
+        });
+
+        socket.on("spawnedAvatarUpsert", (payload: unknown) => {
+            const connection = getConnection(socket.id);
+            if (!connection || !payload || typeof payload !== "object") {
+                return;
+            }
+
+            const args = payload as {
+                targetUserId?: unknown;
+                agentId?: unknown;
+                displayName?: unknown;
+                spriteIndex?: unknown;
+                position?: { x?: unknown; y?: unknown };
+                summonPosition?: { x?: unknown; y?: unknown };
+                wanderArea?: { x?: unknown; y?: unknown; width?: unknown; height?: unknown };
+            };
+
+            const targetUserId = typeof args.targetUserId === "string" ? args.targetUserId.trim() : "";
+            const agentId = typeof args.agentId === "string" ? args.agentId.trim() : "";
+            const displayName = typeof args.displayName === "string" ? args.displayName.trim() : "";
+            const spriteIndex = typeof args.spriteIndex === "number" && Number.isFinite(args.spriteIndex) ? args.spriteIndex : null;
+            const x = typeof args.position?.x === "number" && Number.isFinite(args.position.x) ? args.position.x : null;
+            const y = typeof args.position?.y === "number" && Number.isFinite(args.position.y) ? args.position.y : null;
+            const summonX = typeof args.summonPosition?.x === "number" && Number.isFinite(args.summonPosition.x) ? args.summonPosition.x : null;
+            const summonY = typeof args.summonPosition?.y === "number" && Number.isFinite(args.summonPosition.y) ? args.summonPosition.y : null;
+            const wanderArea = args.wanderArea && typeof args.wanderArea === "object"
+                && typeof args.wanderArea.x === "number" && Number.isFinite(args.wanderArea.x)
+                && typeof args.wanderArea.y === "number" && Number.isFinite(args.wanderArea.y)
+                && typeof args.wanderArea.width === "number" && Number.isFinite(args.wanderArea.width)
+                && typeof args.wanderArea.height === "number" && Number.isFinite(args.wanderArea.height)
+                ? {
+                    x: args.wanderArea.x,
+                    y: args.wanderArea.y,
+                    width: args.wanderArea.width,
+                    height: args.wanderArea.height
+                }
+                : undefined;
+
+            if (!targetUserId || !agentId || !displayName || spriteIndex == null || x == null || y == null) {
+                return;
+            }
+
+            const touchedAt = nowIso();
+            connection.room.spawnedAvatarPresences.set(connection.user.userId, {
+                ownerUserId: connection.user.userId,
+                targetUserId,
+                agentId,
+                displayName,
+                spriteIndex,
+                position: { x, y },
+                summonPosition: summonX != null && summonY != null ? { x: summonX, y: summonY } : undefined,
+                wanderArea,
+                lastInteractionAt: touchedAt,
+                expiresAt: buildExpiryIso()
+            });
+            emitRoomInfo(io, connection.room);
+        });
+
+        socket.on("spawnedAvatarTouch", (payload: unknown) => {
+            const connection = getConnection(socket.id);
+            if (!connection || !payload || typeof payload !== "object") {
+                return;
+            }
+
+            const agentId = typeof (payload as { agentId?: unknown }).agentId === "string"
+                ? (payload as { agentId: string }).agentId.trim()
+                : "";
+            if (!agentId) {
+                return;
+            }
+
+            let changed = false;
+            connection.room.spawnedAvatarPresences.forEach((presence, ownerUserId) => {
+                if (presence.agentId !== agentId) {
+                    return;
+                }
+                changed = true;
+                connection.room.spawnedAvatarPresences.set(ownerUserId, {
+                    ...presence,
+                    lastInteractionAt: nowIso(),
+                    expiresAt: buildExpiryIso()
+                });
+            });
+
+            if (changed) {
+                emitRoomInfo(io, connection.room);
+            }
         });
 
         socket.on("disconnect", () => {
@@ -381,4 +525,17 @@ export const attachRealtimeServer = (httpServer: HttpServer): { getRoomUsers: (r
     return {
         getRoomUsers
     };
+
+    const pruneInterval = setInterval(() => {
+        rooms.forEach(room => {
+            if (pruneExpiredSpawnedAvatars(room)) {
+                io.to(room.roomId).emit("roomInfo", buildRoomInfoPayload(room));
+            }
+        });
+    }, 30000);
+
+    httpServer.on("close", () => {
+        clearInterval(pruneInterval);
+    });
+
 };

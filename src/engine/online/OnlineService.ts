@@ -15,7 +15,32 @@ export interface RoomInfoEvent {
     playerJoinedUserId?: string,
     playerLeft?: string,
     playerLeftUserId?: string,
-    gameTime?: number
+    gameTime?: number,
+    spawnedAvatars?: Array<{
+        ownerUserId: string;
+        targetUserId: string;
+        agentId: string;
+        displayName: string;
+        spriteIndex: number;
+        position: { x: number; y: number };
+        summonPosition?: { x: number; y: number };
+        wanderArea?: { x: number; y: number; width: number; height: number };
+        lastInteractionAt: string;
+        expiresAt: string;
+    }>
+}
+
+export interface SpawnedAvatarUpsertEvent {
+    ownerUserId?: string;
+    targetUserId: string;
+    agentId: string;
+    displayName: string;
+    spriteIndex: number;
+    position: { x: number; y: number };
+    summonPosition?: { x: number; y: number };
+    wanderArea?: { x: number; y: number; width: number; height: number };
+    lastInteractionAt?: string;
+    expiresAt?: string;
 }
 
 export interface ActionEvent {
@@ -104,6 +129,9 @@ export class OnlineService {
     /** Emits if the gameState changed. Something like the host started the game. */
     public onGameStateUpdate = new Signal<string>();
 
+    /** Emits on room info updates, including shared spawned avatar state. */
+    public onRoomInfoUpdate = new Signal<RoomInfoEvent>();
+
     /** The socket.io client that handles all the updates. */
     private socket: SocketIOClient.Socket;
 
@@ -190,6 +218,7 @@ export class OnlineService {
             if (val.playerLeft || val.playerLeftUserId) {
                 this.onOtherPlayerDisconnect.emit(val.playerLeftUserId ?? val.playerLeft!);
             }
+            this.onRoomInfoUpdate.emit(val);
         });
 
         // Listen on gameState changes. Those events are typically fired on gameStart, if the host starts a game or
@@ -288,6 +317,17 @@ export class OnlineService {
         if (event.id != null) {
             this.socket.emit("characterEvent", event);
         }
+    }
+
+    public emitSpawnedAvatarUpsert(payload: SpawnedAvatarUpsertEvent): void {
+        this.socket.emit("spawnedAvatarUpsert", payload);
+    }
+
+    public emitSpawnedAvatarTouch(agentId: string): void {
+        if (!agentId.trim()) {
+            return;
+        }
+        this.socket.emit("spawnedAvatarTouch", { agentId: agentId.trim() });
     }
 
     public getSelfIdentifier(): string {

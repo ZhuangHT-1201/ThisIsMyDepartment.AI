@@ -11,6 +11,7 @@ export interface AgentReplyInput {
     history: ConversationMessage[];
     profile: UserProfile;
     activities: ActivityEvent[];
+    metadata?: Record<string, unknown>;
 }
 
 export interface AgentReplyResult {
@@ -19,17 +20,19 @@ export interface AgentReplyResult {
 }
 
 const jsonRequest = async (args: {
-    hostname: string;
-    path: string;
+    url: string;
     headers: Record<string, string>;
     body: Record<string, unknown>;
 }): Promise<any> => {
     const body = JSON.stringify(args.body);
+    const requestUrl = new URL(args.url);
 
     return new Promise((resolve, reject) => {
         const request = httpsRequest({
-            hostname: args.hostname,
-            path: args.path,
+            protocol: requestUrl.protocol,
+            hostname: requestUrl.hostname,
+            port: requestUrl.port,
+            path: `${requestUrl.pathname}${requestUrl.search}`,
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -62,6 +65,28 @@ const jsonRequest = async (args: {
     });
 };
 
+const getChatCompletionsUrl = (baseUrl: string | undefined, fallbackBaseUrl: string): string => {
+    const normalizedBaseUrl = (baseUrl?.trim() || fallbackBaseUrl).replace(/\/?$/, "/");
+    return new URL("chat/completions", normalizedBaseUrl).toString();
+};
+
+const extractAssistantReply = (response: any): string | null => {
+    const content = response?.choices?.[0]?.message?.content;
+    if (typeof content === "string") {
+        return content.trim() || null;
+    }
+
+    if (Array.isArray(content)) {
+        const combined = content
+            .map(part => (typeof part?.text === "string" ? part.text : ""))
+            .join("\n")
+            .trim();
+        return combined || null;
+    }
+
+    return null;
+};
+
 const buildMockReply = (input: AgentReplyInput): AgentReplyResult => {
     const recentActivities = input.activities.slice(-3).map(activity => {
         const subject = activity.targetId ? `${activity.type} -> ${activity.targetId}` : activity.type;
@@ -76,6 +101,10 @@ const buildMockReply = (input: AgentReplyInput): AgentReplyResult => {
 
     if (input.agent.defaultSystemPrompt) {
         replyParts.push(`Default prompt in use: ${input.agent.defaultSystemPrompt}`);
+    }
+
+    if (input.metadata?.ownerDisplayName && typeof input.metadata.ownerDisplayName === "string") {
+        replyParts.push(`Avatar persona: ${input.metadata.ownerDisplayName}.`);
     }
 
     if (recentActivities.length > 0) {
@@ -103,8 +132,7 @@ const buildOpenAIReply = async (input: AgentReplyInput): Promise<AgentReplyResul
     }));
 
     const response = await jsonRequest({
-        hostname: "api.openai.com",
-        path: "/v1/chat/completions",
+        url: getChatCompletionsUrl(process.env.OPENAI_BASE_URL, "https://api.openai.com/v1/"),
         headers: {
             "Authorization": `Bearer ${apiKey}`
         },
@@ -114,8 +142,8 @@ const buildOpenAIReply = async (input: AgentReplyInput): Promise<AgentReplyResul
         }
     });
 
-    const reply = response?.choices?.[0]?.message?.content;
-    if (typeof reply !== "string" || reply.trim().length === 0) {
+    const reply = extractAssistantReply(response);
+    if (!reply) {
         return buildMockReply(input);
     }
 
@@ -128,7 +156,49 @@ const buildOpenAIReply = async (input: AgentReplyInput): Promise<AgentReplyResul
     };
 };
 
+const buildOpenRouterReply = async (input: AgentReplyInput): Promise<AgentReplyResult> => {
+    const apiKey = process.env.OPENROUTER_API_KEY;
+    if (!apiKey) {
+        return buildMockReply(input);
+    }
+
+    const messages = input.history.map(message => ({
+        role: message.role,
+        content: message.content
+    }));
+
+    const response = await jsonRequest({
+        url: getChatCompletionsUrl(process.env.OPENROUTER_BASE_URL, "https://openrouter.ai/api/v1/"),
+        headers: {
+            "Authorization": `Bearer ${apiKey}`,
+            "HTTP-Referer": process.env.TIMD_FRONTEND_BASE_URL ?? "https://thisismydepartment.ai",
+            "X-Title": process.env.OPENROUTER_APP_NAME ?? "ThisIsMyDepartment.AI"
+        },
+        body: {
+            model: input.agent.model,
+            messages
+        }
+    });
+
+    const reply = extractAssistantReply(response);
+    if (!reply) {
+        return buildMockReply(input);
+    }
+
+    return {
+        reply,
+        metadata: {
+            provider: "openrouter",
+            model: input.agent.model
+        }
+    };
+};
+
 export const generateAgentReply = async (input: AgentReplyInput): Promise<AgentReplyResult> => {
+    if (input.agent.provider === "openrouter") {
+        return buildOpenRouterReply(input);
+    }
+
     if (input.agent.provider === "openai") {
         return buildOpenAIReply(input);
     }

@@ -1,6 +1,6 @@
 import type { AgentDefinition, AppSession, BootstrapResponse, ClientType, DepartmentUser, UserProfile, VerifiedIdentity } from "../../../../shared/types";
 import { getServerConfig } from "../../config";
-import { deleteSessionRecord, getCharacterRecord, getExternalIdentityUserId, getProfileRecord, getSessionRecord, getUserRecord, listCharacterRecords, setCharacterRecord, setExternalIdentityUserId, setProfileRecord, setSessionRecord, setUserRecord } from "../stateStore";
+import { deleteSessionRecord, getCharacterRecord, getExternalIdentityUserId, getProfileRecord, getSessionRecord, getUserRecord, listCharacterRecords, listUserRecords, setCharacterRecord, setExternalIdentityUserId, setProfileRecord, setSessionRecord, setUserRecord } from "../stateStore";
 
 const now = () => new Date().toISOString();
 
@@ -12,6 +12,54 @@ const LEGACY_SEEDED_CHARACTER_NAMES: Record<string, string> = {
     "chenwang-bot": "王琛老师"
 };
 
+function buildConfiguredDefaultAgentRoute(): Pick<AgentDefinition, "provider" | "model"> {
+    const explicitProvider = process.env.TIMD_AGENT_LLM_PROVIDER?.trim().toLowerCase();
+
+    if (explicitProvider === "mock") {
+        return {
+            provider: "mock",
+            model: process.env.MOCK_LLM_MODEL ?? "local-context-preview"
+        };
+    }
+
+    if (explicitProvider === "openrouter") {
+        return {
+            provider: "openrouter",
+            model: process.env.OPENROUTER_MODEL ?? "openai/gpt-4.1-mini"
+        };
+    }
+
+    if (explicitProvider === "openai") {
+        return {
+            provider: "openai",
+            model: process.env.OPENAI_MODEL ?? "gpt-4.1-mini"
+        };
+    }
+
+    if (process.env.OPENROUTER_API_KEY) {
+        return {
+            provider: "openrouter",
+            model: process.env.OPENROUTER_MODEL ?? "openai/gpt-4.1-mini"
+        };
+    }
+
+    if (process.env.OPENAI_API_KEY) {
+        return {
+            provider: "openai",
+            model: process.env.OPENAI_MODEL ?? "gpt-4.1-mini"
+        };
+    }
+
+    return {
+        provider: "mock",
+        model: process.env.MOCK_LLM_MODEL ?? "local-context-preview"
+    };
+}
+
+const buildTeacherSystemPrompt = (displayName: string, specialization: string): string => {
+    return `You are ${displayName}, an AI department teacher avatar specializing in ${specialization}. Answer like an experienced instructor inside a university department. Be concise, helpful, and honest about uncertainty. Use the user's recent activity context when it is relevant.`;
+};
+
 const seededCharacters: AgentDefinition[] = [
     {
         agentId: "chuanhao-bot",
@@ -19,9 +67,8 @@ const seededCharacters: AgentDefinition[] = [
         spriteIndex: 4,
         position: { x: 548.67, y: 1085.67 },
         caption: "按E键聊天",
-        defaultSystemPrompt: "You are a helpful department guide.",
-        provider: "mock",
-        model: "mock-guide-v1",
+        defaultSystemPrompt: buildTeacherSystemPrompt("运筹学课程老师", "operations research and analytical problem solving"),
+        ...buildConfiguredDefaultAgentRoute(),
         walkArea: { x: 548.67, y: 1085.67, width: 50, height: 50 },
         characterRole: "teacher",
         spawnByDefault: true
@@ -32,9 +79,8 @@ const seededCharacters: AgentDefinition[] = [
         spriteIndex: 3,
         position: { x: 129.67, y: 1092.67 },
         caption: "按E键聊天",
-        defaultSystemPrompt: "You are a helpful department guide.",
-        provider: "mock",
-        model: "mock-guide-v1",
+        defaultSystemPrompt: buildTeacherSystemPrompt("工业工程实践课程老师", "industrial engineering practice, project work, and applied methods"),
+        ...buildConfiguredDefaultAgentRoute(),
         walkArea: { x: 129.67, y: 1092.67, width: 50, height: 50 },
         characterRole: "teacher",
         spawnByDefault: true
@@ -61,10 +107,7 @@ const ensureSeededCharacters = (): AgentDefinition[] => {
             return;
         }
 
-        const legacyDisplayName = LEGACY_SEEDED_CHARACTER_NAMES[character.agentId];
-        const shouldCanonicalizeDeploymentCharacter = !persistedCharacter.ownerUserId
-            && (!persistedCharacter.characterRole
-                || persistedCharacter.displayName === legacyDisplayName);
+        const shouldCanonicalizeDeploymentCharacter = !persistedCharacter.ownerUserId;
 
         if (shouldCanonicalizeDeploymentCharacter) {
             setCharacterRecord({
@@ -121,6 +164,59 @@ const getProfileByUserId = (userId: string): UserProfile => {
         updatedAt: now()
     };
     return setProfileRecord(createdProfile);
+};
+
+const createUserAvatarAgentId = (userId: string): string => `user-avatar-${userId}`;
+
+const buildUserAvatarSystemPrompt = (user: DepartmentUser, profile: UserProfile): string => {
+    const customPrompt = profile.characterSystemPrompt?.trim();
+    if (customPrompt) {
+        return customPrompt;
+    }
+
+    const identitySummary = [
+        user.organization ? `Organization: ${user.organization}.` : "",
+        user.department ? `Department: ${user.department}.` : "",
+        user.roles.length > 0 ? `Roles: ${user.roles.join(", ")}.` : ""
+    ].filter(Boolean).join(" ");
+
+    return `You are the AI representation of ${user.displayName}. Speak in first person as this department member. Use prior activity context when available, stay grounded in known facts, and explicitly say when you do not know something. ${identitySummary}`.trim();
+};
+
+const buildConfiguredAvatarModelRoute = (): Pick<AgentDefinition, "provider" | "model"> => buildConfiguredDefaultAgentRoute();
+
+const buildUserAvatarAgentDefinition = (user: DepartmentUser, profile: UserProfile, position: { x: number; y: number }): AgentDefinition => ({
+    agentId: createUserAvatarAgentId(user.userId),
+    displayName: user.displayName,
+    spriteIndex: profile.avatar?.spriteIndex ?? 0,
+    position: { ...position },
+    caption: "Press E to chat",
+    defaultSystemPrompt: buildUserAvatarSystemPrompt(user, profile),
+    ...buildConfiguredAvatarModelRoute(),
+    characterRole: "custom",
+    ownerUserId: user.userId,
+    spawnByDefault: false,
+    updatedAt: now()
+});
+
+const hydrateAvatarAgentDefinition = (definition: AgentDefinition): AgentDefinition => {
+    if (!definition.ownerUserId) {
+        return cloneCharacterDefinition(definition);
+    }
+
+    const user = getUserRecord(definition.ownerUserId);
+    if (!user) {
+        return cloneCharacterDefinition(definition);
+    }
+
+    const profile = getProfileByUserId(user.userId);
+    return {
+        ...buildUserAvatarAgentDefinition(user, profile, definition.position),
+        agentId: definition.agentId,
+        position: { ...definition.position },
+        walkArea: definition.walkArea ? { ...definition.walkArea } : undefined,
+        updatedAt: definition.updatedAt ?? now()
+    };
 };
 
 const buildSessionExpiry = (): string => {
@@ -229,14 +325,18 @@ export const getCurrentProfileForUser = (userId: string): UserProfile => getProf
 
 export const getCurrentUserById = (userId: string): DepartmentUser | null => getUserRecord(userId) ?? null;
 
+export const listCurrentUsers = (): DepartmentUser[] => listUserRecords();
+
 export const getCurrentSessionById = (sessionId: string): AppSession | null => getSessionRecord(sessionId) ?? null;
 
-export const getCharacterDefinitions = (): AgentDefinition[] => ensureSeededCharacters();
+export const getCharacterDefinitions = (): AgentDefinition[] => ensureSeededCharacters()
+    .filter(definition => !definition.ownerUserId)
+    .map(definition => cloneCharacterDefinition(definition));
 
 export const getCharacterDefinitionById = (agentId: string): AgentDefinition | undefined => {
     ensureSeededCharacters();
     const record = getCharacterRecord(agentId);
-    return record ? cloneCharacterDefinition(record) : undefined;
+    return record ? hydrateAvatarAgentDefinition(record) : undefined;
 };
 
 export const updateAvatarProfileForUser = (userId: string, spriteIndex: number): UserProfile => {
@@ -273,4 +373,15 @@ export const updatePreferencesForUser = (userId: string, preferences: Record<str
         updatedAt: now()
     };
     return setProfileRecord(updatedProfile);
+};
+
+export const createOrUpdateAvatarAgentForUser = (userId: string, position: { x: number; y: number }): AgentDefinition | null => {
+    const user = getUserRecord(userId);
+    if (!user) {
+        return null;
+    }
+
+    const profile = getProfileByUserId(userId);
+    const definition = buildUserAvatarAgentDefinition(user, profile, position);
+    return setCharacterRecord(definition);
 };

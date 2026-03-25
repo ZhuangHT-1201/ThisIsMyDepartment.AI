@@ -174,7 +174,7 @@ export abstract class CharacterNode extends OnlineSceneNode<ThisIsMyDepartmentAp
             let newX = x + vx * dt,
                 newY = y + vy * dt;
             // X collision
-            if (this.getPlayerCollisionAt(newX, y)) {
+            if (this.hasLevelCollisionAt(newX, y)) {
                 newX = x;
                 vx = 0;
                 this.velocity = new Vector2(0, vy);
@@ -183,7 +183,7 @@ export abstract class CharacterNode extends OnlineSceneNode<ThisIsMyDepartmentAp
                 this.consecutiveXCollisions = 0;
             }
             // Y collision
-            if (this.getPlayerCollisionAt(x, newY)) {
+            if (this.hasLevelCollisionAt(x, newY)) {
                 newY = y;
                 vy = 0;
                 this.velocity = new Vector2(0, vy);
@@ -191,7 +191,7 @@ export abstract class CharacterNode extends OnlineSceneNode<ThisIsMyDepartmentAp
             } else {
                 this.consecutiveYCollisions = 0;
             }
-            if (this.collidesWithCharacter(newX, newY)) {
+            if (this.collidesWithCharacterAt(newX, newY)) {
                 newX = x;
                 newY = y;
             }
@@ -222,20 +222,20 @@ export abstract class CharacterNode extends OnlineSceneNode<ThisIsMyDepartmentAp
             this.nameLabel.moveTo(0, -offset);
         }
 
-        if (this.getPlayerCollisionAt(this.x, this.y)) {
+        if (this.hasLevelCollisionAt(this.x, this.y)) {
             this.unstuck();
         }
     }
 
     protected unstuck(): this {
         for (let i = 1; i < 100; i++) {
-            if (!this.getPlayerCollisionAt(this.x, this.y - i)) {
+            if (!this.hasLevelCollisionAt(this.x, this.y - i)) {
                 return this.moveTo(this.x, this.y - i);
-            } else if (!this.getPlayerCollisionAt(this.x, this.y + i)) {
+            } else if (!this.hasLevelCollisionAt(this.x, this.y + i)) {
                 return this.moveTo(this.x, this.y + i);
-            } else if (!this.getPlayerCollisionAt(this.x - i, this.y)) {
+            } else if (!this.hasLevelCollisionAt(this.x - i, this.y)) {
                 return this.moveTo(this.x - i, this.y);
-            } else if (!this.getPlayerCollisionAt(this.x + i, this.y)) {
+            } else if (!this.hasLevelCollisionAt(this.x + i, this.y)) {
                 return this.moveTo(this.x + i, this.y);
             }
         }
@@ -320,7 +320,7 @@ export abstract class CharacterNode extends OnlineSceneNode<ThisIsMyDepartmentAp
         this.nameLabel.setText(trimmed);
     }
 
-    private getPlayerCollisionAt(x = this.getX(), y = this.getY()): boolean {
+    protected hasLevelCollisionAt(x = this.getX(), y = this.getY()): boolean {
         // Level collision
         const colliders = this.getColliders();
         const bounds = this.getSceneBounds();
@@ -335,7 +335,7 @@ export abstract class CharacterNode extends OnlineSceneNode<ThisIsMyDepartmentAp
         return colliders;
     }
 
-    private collidesWithCharacter(x = this.getX(), y = this.getY()): boolean {
+    protected collidesWithCharacterAt(x = this.getX(), y = this.getY()): boolean {
         if (this.inGhostMode) {
             return false;
         }
@@ -348,6 +348,10 @@ export abstract class CharacterNode extends OnlineSceneNode<ThisIsMyDepartmentAp
         this.x = oldX;
         this.y = oldY;
         return collides;
+    }
+
+    protected canOccupyPosition(x = this.getX(), y = this.getY()): boolean {
+        return !this.hasLevelCollisionAt(x, y) && !this.collidesWithCharacterAt(x, y);
     }
 
 

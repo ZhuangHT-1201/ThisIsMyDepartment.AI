@@ -22,6 +22,7 @@ export interface TiledMapNodeArgs<T extends Game> extends SceneNodeArgs {
 }
 
 export class TiledMapNode<T extends Game> extends SceneNode<T> {
+    private readonly map: TiledMap;
     private playerSpawn = new Vector2();
     /**
      * Creates a new scene node displaying the given Tiled Map.
@@ -34,6 +35,7 @@ export class TiledMapNode<T extends Game> extends SceneNode<T> {
             childAnchor: Direction.TOP_LEFT,
             ...args
         });
+        this.map = map;
         for (const tiledLayer of map.getLayers()) {
             const layer = tiledLayer.getOptionalProperty("layer", "int")?.getValue();
             if (tiledLayer instanceof TiledTileLayer) {
@@ -71,5 +73,13 @@ export class TiledMapNode<T extends Game> extends SceneNode<T> {
 
     public getPlayerSpawn(): Vector2 {
         return this.playerSpawn;
+    }
+
+    public getTileWidth(): number {
+        return this.width / this.map.getWidth();
+    }
+
+    public getTileHeight(): number {
+        return this.height / this.map.getHeight();
     }
 }
