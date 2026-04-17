@@ -161,7 +161,6 @@ export class ThisIsMyDepartmentApp extends Game {
     private settingsOverlay?: SettingsOverlay;
     private sttService?: SpeechToTextService;
     private sttStatus: SpeechToTextStatus = "inactive";
-    private activeConversationSttStartedAt = 0;
     private interactionHint?: HTMLDivElement;
     private interactionHintText?: HTMLSpanElement;
     private interactionChooserBackdrop?: HTMLDivElement;
@@ -338,10 +337,6 @@ export class ThisIsMyDepartmentApp extends Game {
                 this.refreshConversationStatusIndicator();
             });
             this.sttService.setCallback(({ text, capturedAt }) => {
-                if (capturedAt < this.activeConversationSttStartedAt) {
-                    return;
-                }
-
                 const speechText = `[语音] ${text}`;
 
                 if (this.activeLLMConversation) {
@@ -582,6 +577,7 @@ export class ThisIsMyDepartmentApp extends Game {
             initialAiHosting: this.currentUserProfile?.aiHosting,
             initialAudioEnabled: this.isLocalAudioEnabled(),
             initialVideoEnabled: this.isLocalVideoEnabled(),
+            canManageEnvironmentAvatars: this.currentUser?.roles?.includes("admin"),
             getMediaDevices: async () => {
                 const enumeratedDevices = await this.enumerateMediaDevices();
                 return enumeratedDevices.map((device, index) => ({
@@ -2330,6 +2326,9 @@ export class ThisIsMyDepartmentApp extends Game {
             this.conversationWindow.onSubmit.connect(text => {
                 void this.handleConversationWindowSubmit(text);
             }, this);
+            this.conversationWindow.onVoiceSubmit.connect(({ blob, url, duration }) => {
+                void this.handleConversationVoiceSubmit(blob, url, duration);
+            }, this);
             this.conversationWindow.onCloseRequested.connect(() => {
                 this.handleConversationWindowClose();
             }, this);
@@ -2446,6 +2445,69 @@ export class ThisIsMyDepartmentApp extends Game {
             this.submitPlayerConversationMessage(text);
         }
     }
+    private async handleConversationVoiceSubmit(blob: Blob, url: string, duration: number): Promise<void> {
+        if (this.activeLLMConversation) {
+            const { agent, playerId } = this.activeLLMConversation;
+            const agentId = agent.getAgentId();
+            
+            this.appendConversationEntry(agentId, {
+                senderId: playerId,
+                senderName: this.userName,
+                text: "[语音消息]",
+                audioBlob: blob,
+                audioUrl: url,
+                audioDuration: duration,
+                timestamp: Date.now(),
+                fromSelf: true,
+                authoredByAi: false
+            });
+
+            this.activeLLMConversation.pending = true;
+            try {
+                const formData = new FormData();
+                formData.append("file", blob, "audio.webm");
+                const res = await fetch("http://127.0.0.1:8001/transcribe", { method: "POST", body: formData });
+                const data = await res.json();
+                if (data.text) {
+                    void this.submitLLMConversationMessage(data.text, { suppressSceneSpeech: true, skipUiAppend: true });
+                } else {
+                    this.activeLLMConversation.pending = false;
+                }
+            } catch (e) {
+                console.error("语音转发给AI失败", e);
+                this.activeLLMConversation.pending = false;
+            }
+            return;
+        }
+
+        if (this.activePlayerConversation) {
+            const { partnerId } = this.activePlayerConversation;
+            
+            this.appendConversationEntry(partnerId, {
+                senderId: this.getCurrentUserId(),
+                senderName: this.userName,
+                text: "[语音消息]",
+                audioBlob: blob,
+                audioUrl: url,
+                audioDuration: duration,
+                timestamp: Date.now(),
+                fromSelf: true,
+                authoredByAi: false
+            });
+
+            try {
+                const formData = new FormData();
+                formData.append("file", blob, "audio.webm");
+                const res = await fetch("http://127.0.0.1:8001/transcribe", { method: "POST", body: formData });
+                const data = await res.json();
+                if (data.text) {
+                    this.onlineService.sendDirectMessage(partnerId, `[对方发来语音] ${data.text}`);
+                }
+            } catch (e) {
+                console.error("语音转发给玩家失败", e);
+            }
+        }
+    }
 
     private handleConversationWindowClose(): void {
         this.pushConversationDebug("handleConversationWindowClose", {
@@ -2478,7 +2540,6 @@ export class ThisIsMyDepartmentApp extends Game {
             this.conversationLogs.set(partnerId, []);
         }
         this.activeConversationPartner = partnerId;
-        this.activeConversationSttStartedAt = Date.now();
         this.presentConversation(partnerId);
         this.repositionConversationWindow();
         this.updateConversationMediaLayout();
@@ -2506,7 +2567,6 @@ export class ThisIsMyDepartmentApp extends Game {
         });
         if (this.activeConversationPartner === partnerId) {
             this.activeConversationPartner = null;
-            this.activeConversationSttStartedAt = 0;
             this.conversationWindow?.blurComposer();
             this.conversationWindow?.hideWindow();
         }
@@ -2515,7 +2575,7 @@ export class ThisIsMyDepartmentApp extends Game {
         this.repositionChatInputs();
     }
 
-    private async submitLLMConversationMessage(text: string, options?: { suppressSceneSpeech?: boolean }): Promise<void> {
+    private async submitLLMConversationMessage(text: string, options?: { suppressSceneSpeech?: boolean, skipUiAppend?: boolean }): Promise<void> {
         const conversation = this.activeLLMConversation;
         const trimmed = text.trim();
         if (!conversation || !trimmed) {
@@ -2546,14 +2606,16 @@ export class ThisIsMyDepartmentApp extends Game {
         }
         agent.say("...", 4);
 
-        this.appendConversationEntry(agentId, {
-            senderId: playerId,
-            senderName: this.userName,
-            text: trimmed,
-            timestamp: Date.now(),
-            fromSelf: true,
-            authoredByAi: false
-        });
+        if (!options?.skipUiAppend) {
+            this.appendConversationEntry(agentId, {
+                senderId: playerId,
+                senderName: this.userName,
+                text: trimmed,
+                timestamp: Date.now(),
+                fromSelf: true,
+                authoredByAi: false
+            });
+        }
         this.recordActivity({
             type: "agent_chat_sent",
             targetId: agentId,

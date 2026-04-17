@@ -12,6 +12,9 @@ export interface ConversationEntry {
     timestamp: number;
     fromSelf?: boolean;
     authoredByAi?: boolean;
+    audioBlob?: Blob;
+    audioUrl?: string;
+    audioDuration?: number;
 }
 
 export interface ConversationWindowDisplayOptions {
@@ -26,8 +29,12 @@ export interface ConversationWindowDisplayOptions {
 
 export class ConversationWindow extends SceneNode<ThisIsMyDepartmentApp> {
     public readonly onSubmit = new Signal<string>();
+    public readonly onVoiceSubmit = new Signal<{ blob: Blob, url: string, duration: number }>(); 
     public readonly onCloseRequested = new Signal<void>();
-
+    private discreteMediaRecorder: any = null;
+    private voiceChunks: Blob[] = [];
+    private recordButton?: HTMLButtonElement;
+    private recordingStartTime: number = 0;
     private partnerLabel: string = "";
     private visibleEntries: ConversationEntry[] = [];
     private modeLabel = "Conversation";
@@ -338,7 +345,20 @@ export class ConversationWindow extends SceneNode<ThisIsMyDepartmentApp> {
             this.composerSubmit.style.letterSpacing = "0.04em";
             this.composerSubmit.style.cursor = "pointer";
             footer.appendChild(this.composerSubmit);
-
+            this.recordButton = document.createElement("button");
+            this.recordButton.type = "button";
+            this.recordButton.style.border = "none";
+            this.recordButton.style.borderRadius = "999px";
+            this.recordButton.style.padding = "10px 18px";
+            this.recordButton.style.background = "linear-gradient(135deg, #4dff88 0%, #32b35a 100%)";
+            this.recordButton.style.color = "#08131d";
+            this.recordButton.style.font = `700 12px ${getUiFontStack(this.language)}`;
+            this.recordButton.style.cursor = "pointer";
+            this.recordButton.textContent = "按住说话";
+            this.recordButton.addEventListener("mousedown", () => this.startRecordingVoice());
+            this.recordButton.addEventListener("mouseup", () => this.stopRecordingVoice());
+            this.recordButton.addEventListener("mouseleave", () => this.stopRecordingVoice());
+            footer.appendChild(this.recordButton);
             this.domRoot = root;
         }
 
@@ -389,7 +409,71 @@ export class ConversationWindow extends SceneNode<ThisIsMyDepartmentApp> {
             message.appendChild(meta);
 
             const bubble = document.createElement("div");
-            bubble.textContent = entry.text;
+            if (entry.audioUrl && entry.audioBlob) {
+                const playBtn = document.createElement("button");
+                playBtn.textContent = "播放语音";
+                playBtn.style.background = "rgba(255,255,255,0.2)";
+                playBtn.style.border = "none";
+                playBtn.style.color = "white";
+                playBtn.style.padding = "4px 8px";
+                playBtn.style.borderRadius = "4px";
+                playBtn.style.cursor = "pointer";
+                playBtn.style.marginRight = "8px";
+                playBtn.onclick = () => {
+                    const audio = new Audio(entry.audioUrl);
+                    audio.play();
+                };
+                const durationSpan = document.createElement("span");
+                durationSpan.textContent = entry.audioDuration ? `${entry.audioDuration}s` : "";
+                durationSpan.style.color = "rgba(255, 255, 255, 0.6)"; 
+                durationSpan.style.fontSize = "12px";
+                durationSpan.style.marginRight = "12px";
+                durationSpan.style.display = "inline-block";
+                durationSpan.style.verticalAlign = "middle";
+                const transBtn = document.createElement("button");
+                transBtn.textContent = "转文字";
+                transBtn.style.background = "transparent";
+                transBtn.style.border = "1px solid rgba(255,255,255,0.4)";
+                transBtn.style.color = "white";
+                transBtn.style.padding = "3px 6px";
+                transBtn.style.borderRadius = "4px";
+                transBtn.style.cursor = "pointer";
+                transBtn.style.fontSize = "12px";
+
+                const textContainer = document.createElement("div");
+                textContainer.style.marginTop = "8px";
+                textContainer.style.borderTop = "1px dashed rgba(255,255,255,0.2)";
+                textContainer.style.paddingTop = "4px";
+                
+                if (entry.text && entry.text !== "[语音消息]") {
+                    textContainer.textContent = entry.text;
+                    transBtn.style.display = "none";
+                }
+
+                transBtn.onclick = async () => {
+                    transBtn.textContent = "正在转录...";
+                    transBtn.disabled = true;
+                    const formData = new FormData();
+                    formData.append("file", entry.audioBlob!, "audio.webm");
+                    try {
+                        const res = await fetch("http://127.0.0.1:8001/transcribe", { method: "POST", body: formData });
+                        const data = await res.json();
+                        textContainer.textContent = data.text;
+                        entry.text = data.text; 
+                        transBtn.style.display = "none";
+                    } catch(e) {
+                        transBtn.textContent = "失败，重试";
+                        transBtn.disabled = false;
+                    }
+                };
+
+                bubble.appendChild(playBtn);
+                bubble.appendChild(durationSpan);
+                bubble.appendChild(transBtn);
+                bubble.appendChild(textContainer);
+            } else {
+                bubble.textContent = entry.text; 
+            }
             bubble.style.maxWidth = "86%";
             bubble.style.whiteSpace = "pre-wrap";
             bubble.style.wordBreak = "break-word";
@@ -484,6 +568,42 @@ export class ConversationWindow extends SceneNode<ThisIsMyDepartmentApp> {
             return;
         }
         this.onSubmit.emit(text);
+    }
+
+    private async startRecordingVoice() {
+        if (this.recordButton) this.recordButton.textContent = "松开发送...";
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            this.discreteMediaRecorder = new (window as any).MediaRecorder(stream, { mimeType: 'audio/webm' });
+            this.voiceChunks = [];
+
+            this.discreteMediaRecorder!.ondataavailable = (e: any) => this.voiceChunks.push(e.data);
+            
+            this.discreteMediaRecorder!.onstop = () => {
+                if (this.voiceChunks.length > 0) {
+                    const blob = new Blob(this.voiceChunks, { type: 'audio/webm' });
+                    const url = URL.createObjectURL(blob);
+                    
+                    const durationSeconds = Math.max(1, Math.round((Date.now() - this.recordingStartTime) / 1000));
+                    
+                    this.onVoiceSubmit.emit({ blob, url, duration: durationSeconds });
+                }
+                stream.getTracks().forEach((track: any) => track.stop());
+                if (this.recordButton) this.recordButton.textContent = "按住说话";
+            };
+
+            this.recordingStartTime = Date.now();
+            this.discreteMediaRecorder!.start();
+        } catch (err) {
+            console.error("录音失败", err);
+            if (this.recordButton) this.recordButton.textContent = "麦克风权限被拒";
+        }
+    }
+
+    private stopRecordingVoice() {
+        if (this.discreteMediaRecorder && this.discreteMediaRecorder.state === "recording") {
+            this.discreteMediaRecorder.stop();
+        }
     }
 
     private resizeComposer(): void {

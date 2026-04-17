@@ -301,7 +301,10 @@ export const handleChatWithAgentRoute = async (request: IncomingMessage, respons
             history: savedConversation.messages,
             metadata: reply.metadata ?? {}
         });
-    } catch (_) {
+    } catch (error) { 
+        console.error("\n\n======AI接口真实报错======\n", error, "\n=============================\n"); 
+        
         sendJson(request, response, 400, { error: "Invalid JSON payload" });
     }
 };
+
